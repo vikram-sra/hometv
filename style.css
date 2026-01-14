@@ -289,17 +289,23 @@ body::after {
     background: var(--terminal-bg);
     border: 1px solid var(--terminal-gray);
     color: var(--terminal-green);
-    padding: 4px 8px;
+    padding: 6px 10px;
     font-family: inherit;
     font-size: 10px;
     cursor: pointer;
     outline: none;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    transition: all 0.15s;
+}
+
+.theme-select:hover {
+    border-color: var(--terminal-green-dim);
 }
 
 .theme-select:focus {
     border-color: var(--terminal-green);
+    box-shadow: 0 0 5px var(--terminal-green-glow);
 }
 
 .theme-select option {
@@ -476,13 +482,21 @@ body::after {
     color: var(--terminal-green);
     padding: 6px 10px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 10px;
     outline: none;
     cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+}
+
+.terminal-select:hover {
+    border-color: var(--terminal-green-dim);
 }
 
 .terminal-select:focus {
     border-color: var(--terminal-green);
+    box-shadow: 0 0 5px var(--terminal-green-glow);
 }
 
 .terminal-select option {
