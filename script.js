@@ -96,7 +96,10 @@ class TVApp {
         this.setupKeyboard();
         this.setupThemeAndCollapse();
 
-        this.loadPlaylist(startUrl);
+        // Load playlist then switch to favorites tab
+        this.loadPlaylist(startUrl).then(() => {
+            this.setListTab('favorites', document.getElementById('tab-fav'));
+        });
 
         // Register Service Worker for PWA
         this.registerServiceWorker();
