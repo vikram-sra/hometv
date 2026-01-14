@@ -48,7 +48,6 @@ class TVApp {
             displayInfo: document.getElementById('displayInfo'),
             video: document.getElementById('video'),
             sidebar: document.getElementById('sidebar'),
-            mobileBtn: document.getElementById('mobileBtn'),
             indicator: document.getElementById('ui-indicator'),
             playlistSelect: document.getElementById('playlistSelect'),
             hwPlay: document.getElementById('hw-play-btn'),
@@ -58,6 +57,7 @@ class TVApp {
             hwVolFill: document.getElementById('hw-vol-fill'),
             hwPip: document.getElementById('hw-pip-btn'),
             hwSeek: document.getElementById('hw-seek'),
+            hwRotate: document.getElementById('hw-rotate-btn'),
             hwProgress: document.getElementById('hw-progress'),
             statusDash: document.getElementById('statusDashboard'),
             helpOverlay: document.getElementById('helpOverlay'),
@@ -199,7 +199,6 @@ class TVApp {
         };
 
         this.ui.categorySelect.onchange = () => this.applyFilters();
-        this.ui.mobileBtn.onclick = () => this.ui.sidebar.classList.toggle('open');
 
         this.ui.channelList.onscroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = this.ui.channelList;
@@ -234,10 +233,25 @@ class TVApp {
         this.ui.hwMute.onclick = () => {
             this.ui.video.muted = !this.ui.video.muted;
             this.ui.hwMute.classList.toggle('active', this.ui.video.muted);
-            this.ui.hwMute.textContent = this.ui.video.muted ? 'UNMUTE' : 'MUTE';
+            this.ui.hwMute.innerHTML = this.ui.video.muted ? '<span class="material-icons-round">volume_off</span>' : '<span class="material-icons-round">volume_up</span>';
         };
 
         this.ui.hwFS.onclick = () => { this.plyr.fullscreen.toggle(); };
+
+        this.ui.hwRotate.onclick = () => {
+            if (screen.orientation && screen.orientation.lock) {
+                // Try Native
+                if (screen.orientation.type.includes('portrait')) {
+                    screen.orientation.lock('landscape').catch(() => this.toggleCssRotation());
+                } else {
+                    screen.orientation.lock('portrait').catch(() => { });
+                    this.toggleCssRotation(); // Ensure fallback is cleared
+                }
+            } else {
+                // Fallback to CSS
+                this.toggleCssRotation();
+            }
+        };
 
         this.ui.hwSeek.onclick = (e) => {
             const rect = this.ui.hwSeek.getBoundingClientRect();
@@ -289,14 +303,24 @@ class TVApp {
         });
 
         this.ui.video.addEventListener('play', () => {
-            this.ui.hwPlay.textContent = 'PAUSE';
+            this.ui.hwPlay.innerHTML = '<span class="material-icons-round">pause</span>';
             this.ui.hwPlay.classList.add('active');
         });
 
         this.ui.video.addEventListener('pause', () => {
-            this.ui.hwPlay.textContent = 'PLAY';
+            this.ui.hwPlay.innerHTML = '<span class="material-icons-round">play_arrow</span>';
             this.ui.hwPlay.classList.remove('active');
         });
+    }
+
+    toggleCssRotation() {
+        const doc = document.documentElement;
+        if (doc.classList.contains('rotated-mode')) {
+            doc.classList.remove('rotated-mode');
+        } else {
+            doc.classList.add('rotated-mode');
+            if (doc.requestFullscreen) doc.requestFullscreen();
+        }
     }
 
     updateVolumeUI(v) {

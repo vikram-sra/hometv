@@ -111,14 +111,20 @@
     }
 }
 
+html,
+body {
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+}
+
 body {
     font-family: 'JetBrains Mono', monospace;
     background: var(--terminal-bg);
     color: var(--terminal-green);
-    height: 100vh;
     display: flex;
-    overflow: hidden;
-    position: relative;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -1207,85 +1213,231 @@ input:focus {
 }
 
 /* Mobile Trigger */
-.mobile-trigger {
-    display: none;
-    position: absolute;
-    left: 10px;
-    top: 7px;
-    z-index: 1001;
-    background: var(--terminal-bg);
-    border: 1px solid var(--terminal-green-dim);
-    color: var(--terminal-green);
-    padding: 4px 8px;
-    font-family: inherit;
-    font-size: 10px;
-    cursor: pointer;
-    box-shadow: 0 0 5px var(--terminal-green-glow);
-}
 
 /* Mobile Responsive */
 @media (max-width: 900px) {
     .sidebar {
         position: absolute;
         height: 100%;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        width: 85%;
-        /* Wider on mobile for better touch */
-        max-width: 320px;
-    }
-
-    .sidebar.open {
-        transform: translateX(0);
+        z-index: 2000;
+        /* Sidebar above all else */
+        background: var(--terminal-bg);
+        border-right: 1px solid var(--terminal-green-dim);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8);
+        width: 85%;
+        max-width: 320px;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateX(0);
+        /* Ensure visible */
     }
 
-    .mobile-trigger {
-        display: block;
+    /* Use .collapsed to toggle docked state */
+    .sidebar.collapsed {
+        width: 60px !important;
+        max-width: 60px;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
     }
 
-    .display-header {
-        padding-left: 80px;
-        /* Make room for [MENU] button */
+    /* Content Visibility based on collapsed state */
+    .sidebar.collapsed .system-label,
+    .sidebar.collapsed .theme-switcher,
+    .sidebar.collapsed .system-info,
+    .sidebar.collapsed .config-panel,
+    .sidebar.collapsed .nav-primary,
+    .sidebar.collapsed .cmd-line,
+    .sidebar.collapsed .search-section,
+    .sidebar.collapsed .status-bar,
+    .sidebar.collapsed .channel-item .ch-name,
+    .sidebar.collapsed .channel-item .ch-group,
+    .sidebar.collapsed .channel-list .channel-main,
+    .sidebar.collapsed .channel-item .fav-btn,
+    .sidebar.collapsed .fav-lists-header,
+    .sidebar.collapsed .fav-section-header,
+    .sidebar.collapsed .fav-section-empty,
+    .sidebar.collapsed .channel-item .add-to-list-btn,
+    .sidebar.collapsed .channel-item .list-remove-btn {
+        display: none !important;
+    }
+
+    .sidebar.collapsed .channel-item {
+        justify-content: center;
+        padding: 8px;
+    }
+
+    /* Bigger click targets on mobile */
+    .collapse-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 24px;
+    }
+
+    .sidebar.collapsed .collapse-btn {
+        width: 100%;
+        height: 50px;
+        border-radius: 0;
+        border: none;
+        border-bottom: 1px solid var(--terminal-green-dim);
+    }
+
+    .tab {
+        padding: 15px 10px;
+        font-size: 12px;
+    }
+
+    .channel-item {
+        padding: 12px 16px;
+    }
+
+    .fav-btn,
+    .add-to-list-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
     }
 }
 
 @media (max-width: 600px) {
     .tv-container {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 60px;
+        /* Sidebar padding */
         padding: 0;
+        height: auto;
+        /* Let existing height be overridden */
+        overflow: hidden;
+        z-index: 100;
+        background: #000;
     }
 
     .tv-case {
-        padding: 4px;
-        border-radius: 0;
-        box-shadow: none;
+        padding: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #000;
+        /* Ensure no border/shadow adds size */
         border: none;
+        box-shadow: none;
     }
 
     .tv-screen-bezel {
         border-radius: 4px;
         border-width: 1px;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .main-display,
+    .player-container {
+        height: 0 !important;
+        flex: 1 !important;
+        min-height: 0 !important;
     }
 
     .tv-controls {
-        padding: 0 10px;
-        flex-wrap: wrap;
         height: auto;
-        gap: 10px;
-        padding-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        background: #080808;
+        border-top: 1px solid #222;
+        flex-shrink: 0;
     }
 
-    .brand-name {
+    .tv-controls .tv-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .tv-controls div:has(> .hw-progress-container) {
+        order: 1;
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    .hw-progress-container {
+        width: 100% !important;
+        height: 8px !important;
+        margin: 0 !important;
+    }
+
+    .tv-controls .hw-volume-dial {
+        width: 100%;
+        min-width: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 5px;
+        height: 16px;
+        order: 2;
+        margin: 0 !important;
+    }
+
+    .hw-volume-dial>span {
         display: none;
     }
 
-    .tv-buttons {
-        gap: 10px;
+    .hw-vol-slider-container {
+        flex: 1;
+        height: 8px;
+        background: #000 !important;
+        border: 1px solid #333 !important;
+    }
+
+    .tv-buttons.control-grid {
+        order: 3;
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        width: 100%;
+        margin: 0 !important;
     }
 
     .hw-btn {
-        width: 40px;
-        font-size: 8px;
+        width: 100% !important;
+        height: 52px;
+        padding: 0;
+        border-radius: 6px;
+        background: #111;
+        border: 1px solid #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hw-btn .material-icons-round {
+        font-size: 24px;
+        color: var(--terminal-green);
+    }
+
+    /* Force visibility of rotation button */
+    #hw-rotate-btn {
+        display: flex !important;
+    }
+
+    /* Hide extraneous elements */
+    .brand-name {
+        display: none !important;
+    }
+
+    .tv-controls div:has(.tv-indicator) {
+        display: none !important;
+    }
+
+    .tv-buttons:not(.control-grid) {
+        display: contents;
+        /* Allow children to participate in flex stacking */
     }
 }
 
@@ -1311,6 +1463,20 @@ input:focus {
     transition: all 0.15s;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* CSS Fallback for Rotation */
+.rotated-mode {
+    transform: rotate(90deg);
+    transform-origin: center;
+    width: 100vh;
+    height: 100vw;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    z-index: 9999;
+    background: #000;
 }
 
 .fav-new-list-btn:hover {

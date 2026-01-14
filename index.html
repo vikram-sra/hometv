@@ -25,6 +25,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap"
         rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
     <!-- Local Assets -->
     <link rel="stylesheet" href="style.css">
@@ -32,7 +33,6 @@
 
 <body>
 
-    <button class="mobile-trigger" id="mobileBtn">[MENU]</button>
 
     <aside class="sidebar" id="sidebar">
         <!-- Sidebar Header with Controls -->
@@ -216,33 +216,40 @@
                         </div>
                         <span style="user-select:none">AUDIO_GAIN</span>
                     </div>
-                    <button class="hw-btn" id="hw-play-btn" tabindex="9">PLAY</button>
-                    <button class="hw-btn" id="hw-mute-btn" tabindex="10">MUTE</button>
-                </div>
 
-                <div
-                    style="flex: 1; margin: 0 40px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div class="hw-progress-container" id="hw-seek" tabindex="11">
-                        <div class="hw-progress-bar" id="hw-progress"></div>
+                    <div
+                        style="flex: 1; margin: 0 40px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div class="hw-progress-container" id="hw-seek" tabindex="11">
+                            <div class="hw-progress-bar" id="hw-progress"></div>
+                        </div>
+                        <div class="brand-name" style="margin-top: -10px; user-select:none">STREAM.SYS P-800 //
+                            TELEVISION_RECEIVER</div>
                     </div>
-                    <div class="brand-name" style="margin-top: -10px; user-select:none">STREAM.SYS P-800 //
-                        TELEVISION_RECEIVER</div>
-                </div>
 
-                <div class="tv-buttons">
-                    <button class="hw-btn" id="hw-fs-btn" tabindex="12">WIDE</button>
-                    <button class="hw-btn" id="hw-pip-btn" tabindex="13" style="font-size: 8px;">PIP</button>
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; user-select:none">
-                        <div class="tv-indicator" id="ui-indicator"></div>
-                        <span style="font-size: 7px; color: #444; font-weight: bold;">SIG_LOCK</span>
+                    <div class="tv-buttons control-grid">
+                        <!-- Grid Container for buttons -->
+                        <button class="hw-btn" id="hw-play-btn" tabindex="9"><span
+                                class="material-icons-round">play_arrow</span></button>
+                        <button class="hw-btn" id="hw-mute-btn" tabindex="10"><span
+                                class="material-icons-round">volume_up</span></button>
+                        <button class="hw-btn" id="hw-fs-btn" tabindex="12"><span
+                                class="material-icons-round">fullscreen</span></button>
+                        <button class="hw-btn" id="hw-rotate-btn" style="display: none;"><span
+                                class="material-icons-round">screen_rotation</span></button>
+                        <button class="hw-btn" id="hw-pip-btn" tabindex="13"><span
+                                class="material-icons-round">picture_in_picture_alt</span></button>
+                        <div
+                            style="display: flex; flex-direction: column; align-items: center; gap: 4px; user-select:none">
+                            <div class="tv-indicator" id="ui-indicator"></div>
+                            <span style="font-size: 7px; color: #444; font-weight: bold;">SIG_LOCK</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Main Application Script -->
-    <script src="script.js"></script>
+        <!-- Main Application Script -->
+        <script src="script.js"></script>
 </body>
 
 </html>
