@@ -8,6 +8,10 @@ class TVApp {
             categories: {},
             languages: new Set(),
             favorites: new Set(JSON.parse(localStorage.getItem('fav_channels') || '[]')),
+            // Multiple favorites lists: { listId: { name: string, channels: string[], collapsed: boolean } }
+            favoriteLists: JSON.parse(localStorage.getItem('fav_lists') || '{}'),
+            activeFavList: 'all', // 'all' shows all starred, or a specific list ID
+            favListsCollapsed: JSON.parse(localStorage.getItem('fav_lists_collapsed') || '{}'),
             currentChannel: null,
             hls: null,
             renderIndex: 0,
@@ -101,6 +105,20 @@ class TVApp {
         window.setListTab = (tab, el) => this.setListTab(tab, el);
         window.toggleFavoriteManual = (url, btn) => this.toggleFavoriteManual(url, btn);
         window.toggleConfig = () => this.toggleConfig();
+
+        // Favorites list management
+        window.createNewFavList = () => this.promptCreateList();
+        window.deleteFavList = (listId) => this.promptDeleteList(listId);
+        window.renameFavList = (listId) => this.promptRenameList(listId);
+        window.toggleFavSection = (listId) => {
+            this.toggleFavListCollapse(listId);
+            this.renderFavoritesView();
+        };
+        window.showAddToListMenu = (url, btn) => this.showAddToListMenu(url, btn);
+        window.removeFromFavList = (listId, url) => {
+            this.removeChannelFromList(listId, url);
+            this.renderFavoritesView();
+        };
     }
 
     registerServiceWorker() {
@@ -572,12 +590,16 @@ class TVApp {
     }
 
     applyFilters() {
+        // Special handling for favorites tab - use the new collapsible lists view
+        if (this.state.activeTab === 'favorites') {
+            this.renderFavoritesView();
+            return;
+        }
+
         const search = this.ui.searchInput.value.toLowerCase();
         const category = this.ui.categorySelect.value;
 
         this.state.filteredChannels = this.state.channels.filter(ch => {
-            if (this.state.activeTab === 'favorites' && !this.state.favorites.has(ch.url)) return false;
-            // if (this.state.activeTab === 'recents' && !this.state.recents.some(r => r.url === ch.url)) return false; // Fix logic if needed
             if (this.state.activeTab === 'recents') {
                 return this.state.recents.some(r => r.url === ch.url);
             }
@@ -607,6 +629,9 @@ class TVApp {
     }
 
     renderMoreChannels() {
+        // Don't render more channels if on favorites tab - it has its own rendering
+        if (this.state.activeTab === 'favorites') return;
+
         // Optimization: Reduce batch size to prevent long frames
         const batchSize = 50;
         const start = this.state.renderIndex;
@@ -623,11 +648,10 @@ class TVApp {
             item.dataset.index = i;
             item.tabIndex = 7;
 
-            // Safe logo - lazy loaded with fallback
-            const fallbackSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231a1a1a'/%3E%3Ctext y='50%25' x='50%25' text-anchor='middle' dominant-baseline='middle' fill='%23333' font-size='40' font-family='monospace'%3ETV%3C/text%3E%3C/svg%3E";
-            const logoHtml = ch.logo
-                ? `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='${fallbackSvg}'">`
-                : `<div class="ch-logo"><span>TV</span></div>`;
+            // Safe logo - lazy loaded
+            const logoHtml = ch.logo ?
+                `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'%3E%3Crect width=\\'100\\' height=\\'100\\' fill=\\'%231a1a1a\\'/%3E%3Ctext y=\\'50%25\\' x=\\'50%25\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\' fill=\\'%23333\\' font-size=\\'40\\' font-family=\\'monospace\\'%3ETV%3C/text%3E%3C/svg%3E'">` :
+                `<div class="ch-logo" style="display:flex;align-items:center;justify-content:center;color:#333;font-size:10px;">TV</div>`;
 
             item.innerHTML = `
                 ${logoHtml}
@@ -669,22 +693,312 @@ class TVApp {
     toggleFavoriteManual(url, btn) {
         this.toggleFavorite(url);
         const isFav = this.state.favorites.has(url);
-        btn.className = `fav-btn ${isFav ? 'active' : ''}`;
-        btn.textContent = isFav ? '★' : '☆';
+        if (btn) {
+            btn.className = `fav-btn ${isFav ? 'active' : ''}`;
+            btn.textContent = isFav ? '★' : '☆';
+        }
 
-        if (this.state.activeTab === 'favorites' && !isFav) {
-            this.applyFilters();
+        // Always refresh favorites view when on favorites tab
+        if (this.state.activeTab === 'favorites') {
+            this.renderFavoritesView();
         }
     }
 
     toggleFavorite(url) {
         if (this.state.favorites.has(url)) {
             this.state.favorites.delete(url);
+            // Also remove from all custom lists
+            Object.keys(this.state.favoriteLists).forEach(listId => {
+                const idx = this.state.favoriteLists[listId].channels.indexOf(url);
+                if (idx > -1) {
+                    this.state.favoriteLists[listId].channels.splice(idx, 1);
+                }
+            });
+            this.saveFavoriteLists();
         } else {
             this.state.favorites.add(url);
         }
         localStorage.setItem('fav_channels', JSON.stringify(Array.from(this.state.favorites)));
     }
+
+    // ========== FAVORITES LISTS MANAGEMENT ==========
+
+    saveFavoriteLists() {
+        localStorage.setItem('fav_lists', JSON.stringify(this.state.favoriteLists));
+        localStorage.setItem('fav_lists_collapsed', JSON.stringify(this.state.favListsCollapsed));
+    }
+
+    createFavoriteList(name) {
+        const listId = 'list_' + Date.now();
+        this.state.favoriteLists[listId] = {
+            name: name,
+            channels: []
+        };
+        this.state.favListsCollapsed[listId] = false;
+        this.saveFavoriteLists();
+        return listId;
+    }
+
+    deleteFavoriteList(listId) {
+        if (this.state.favoriteLists[listId]) {
+            delete this.state.favoriteLists[listId];
+            delete this.state.favListsCollapsed[listId];
+            this.saveFavoriteLists();
+            // Reset to 'all' view if we deleted the active list
+            if (this.state.activeFavList === listId) {
+                this.state.activeFavList = 'all';
+            }
+            this.renderFavoritesView();
+        }
+    }
+
+    renameFavoriteList(listId, newName) {
+        if (this.state.favoriteLists[listId]) {
+            this.state.favoriteLists[listId].name = newName;
+            this.saveFavoriteLists();
+            this.renderFavoritesView();
+        }
+    }
+
+    addChannelToList(listId, url) {
+        if (this.state.favoriteLists[listId]) {
+            if (!this.state.favoriteLists[listId].channels.includes(url)) {
+                this.state.favoriteLists[listId].channels.push(url);
+                this.saveFavoriteLists();
+            }
+        }
+    }
+
+    removeChannelFromList(listId, url) {
+        if (this.state.favoriteLists[listId]) {
+            const idx = this.state.favoriteLists[listId].channels.indexOf(url);
+            if (idx > -1) {
+                this.state.favoriteLists[listId].channels.splice(idx, 1);
+                this.saveFavoriteLists();
+            }
+        }
+    }
+
+    toggleFavListCollapse(listId) {
+        this.state.favListsCollapsed[listId] = !this.state.favListsCollapsed[listId];
+        this.saveFavoriteLists();
+    }
+
+    showAddToListMenu(url, btn) {
+        // Remove any existing menu
+        const existing = document.querySelector('.add-to-list-menu');
+        if (existing) existing.remove();
+
+        const lists = Object.entries(this.state.favoriteLists);
+        if (lists.length === 0) {
+            // No lists, prompt to create one
+            this.promptCreateList(url);
+            return;
+        }
+
+        const menu = document.createElement('div');
+        menu.className = 'add-to-list-menu';
+        menu.innerHTML = `
+            <div class="menu-header">ADD TO LIST</div>
+            ${lists.map(([id, list]) => {
+            const isInList = list.channels.includes(url);
+            return `<div class="menu-item ${isInList ? 'in-list' : ''}" data-list-id="${id}">
+                    <span class="menu-check">${isInList ? '✓' : ''}</span>
+                    <span class="menu-name">${list.name}</span>
+                </div>`;
+        }).join('')}
+            <div class="menu-divider"></div>
+            <div class="menu-item menu-new" data-action="new">+ NEW LIST</div>
+        `;
+
+        // Position menu near the button
+        const rect = btn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.left = `${rect.right + 5}px`;
+        menu.style.top = `${rect.top}px`;
+        menu.style.zIndex = '10000';
+
+        document.body.appendChild(menu);
+
+        // Handle clicks
+        menu.addEventListener('click', (e) => {
+            const item = e.target.closest('.menu-item');
+            if (!item) return;
+
+            if (item.dataset.action === 'new') {
+                menu.remove();
+                this.promptCreateList(url);
+            } else if (item.dataset.listId) {
+                const listId = item.dataset.listId;
+                const isInList = this.state.favoriteLists[listId].channels.includes(url);
+                if (isInList) {
+                    this.removeChannelFromList(listId, url);
+                } else {
+                    this.addChannelToList(listId, url);
+                }
+                menu.remove();
+                if (this.state.activeTab === 'favorites') {
+                    this.renderFavoritesView();
+                }
+            }
+        });
+
+        // Close on outside click
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== btn) {
+                menu.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler), 10);
+    }
+
+    promptCreateList(preAddUrl = null) {
+        const name = prompt('Enter list name:');
+        if (name && name.trim()) {
+            const listId = this.createFavoriteList(name.trim());
+            if (preAddUrl) {
+                this.addChannelToList(listId, preAddUrl);
+            }
+            if (this.state.activeTab === 'favorites') {
+                this.renderFavoritesView();
+            }
+        }
+    }
+
+    promptDeleteList(listId) {
+        const list = this.state.favoriteLists[listId];
+        if (list && confirm(`Delete list "${list.name}"? Channels will remain in All Starred.`)) {
+            this.deleteFavoriteList(listId);
+        }
+    }
+
+    promptRenameList(listId) {
+        const list = this.state.favoriteLists[listId];
+        if (list) {
+            const newName = prompt('Enter new name:', list.name);
+            if (newName && newName.trim()) {
+                this.renameFavoriteList(listId, newName.trim());
+            }
+        }
+    }
+
+    renderFavoritesView() {
+        const container = this.ui.channelList;
+        container.innerHTML = '';
+
+        // Header with + button
+        const header = document.createElement('div');
+        header.className = 'fav-lists-header';
+        header.innerHTML = `
+            <button class="fav-new-list-btn" onclick="window.createNewFavList()" title="Create New List">+ NEW LIST</button>
+        `;
+        container.appendChild(header);
+
+        // Get all favorited channels
+        const favChannels = this.state.channels.filter(ch => this.state.favorites.has(ch.url));
+
+        // Render "All Starred" section (always first, not deletable)
+        this.renderFavSection(container, 'all', 'ALL STARRED', favChannels, false);
+
+        // Render custom lists
+        const listIds = Object.keys(this.state.favoriteLists);
+        listIds.forEach(listId => {
+            const list = this.state.favoriteLists[listId];
+            const listChannels = favChannels.filter(ch => list.channels.includes(ch.url));
+            this.renderFavSection(container, listId, list.name, listChannels, true);
+        });
+
+        if (favChannels.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'padding: 20px; color: var(--terminal-muted); text-align: center;';
+            empty.innerHTML = '> NO FAVORITES YET<br><span style="font-size:10px;color:var(--terminal-gray)">Star a channel to add it here</span>';
+            container.appendChild(empty);
+        }
+
+        this.ui.channelCount.textContent = favChannels.length;
+    }
+
+    renderFavSection(container, listId, name, channels, isDeletable) {
+        const isCollapsed = this.state.favListsCollapsed[listId] || false;
+
+        // Section header
+        const sectionHeader = document.createElement('div');
+        sectionHeader.className = 'fav-section-header';
+        sectionHeader.innerHTML = `
+            <span class="fav-section-toggle" onclick="window.toggleFavSection('${listId}')">${isCollapsed ? '▶' : '▼'}</span>
+            <span class="fav-section-name" onclick="window.toggleFavSection('${listId}')">${name.toUpperCase()}</span>
+            <span class="fav-section-count">(${channels.length})</span>
+            ${isDeletable ? `
+                <button class="fav-section-delete" onclick="event.stopPropagation(); window.deleteFavList('${listId}')" title="Delete List">✕</button>
+            ` : ''}
+        `;
+        container.appendChild(sectionHeader);
+
+        // Section content (channels)
+        if (!isCollapsed) {
+            const section = document.createElement('div');
+            section.className = 'fav-section-content';
+            section.dataset.listId = listId;
+
+            if (channels.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'fav-section-empty';
+                empty.textContent = listId === 'all' ? '> No starred channels' : '> No channels in this list';
+                section.appendChild(empty);
+            } else {
+                channels.forEach((ch, i) => {
+                    const item = this.createChannelItem(ch, i, listId);
+                    section.appendChild(item);
+                });
+            }
+
+            container.appendChild(section);
+        }
+    }
+
+    createChannelItem(ch, index, listId = null) {
+        const isFav = this.state.favorites.has(ch.url);
+        const item = document.createElement('div');
+        item.className = 'channel-item';
+        item.dataset.index = index;
+        item.dataset.url = ch.url;
+        item.tabIndex = 7;
+
+        const logoHtml = ch.logo ?
+            `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'%3E%3Crect width=\\'100\\' height=\\'100\\' fill=\\'%231a1a1a\\'/%3E%3Ctext y=\\'50%25\\' x=\\'50%25\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\' fill=\\'%23333\\' font-size=\\'40\\' font-family=\\'monospace\\'%3ETV%3C/text%3E%3C/svg%3E'">` :
+            `<div class="ch-logo" style="display:flex;align-items:center;justify-content:center;color:#333;font-size:10px;">TV</div>`;
+
+        // Show list button only if not in "all" view
+        const listBtnHtml = listId !== 'all' ?
+            `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')" title="Remove from list">−</button>` :
+            '';
+
+        item.innerHTML = `
+            ${logoHtml}
+            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.toggleFavoriteManual('${ch.url}', this)" tabindex="-1">${isFav ? '★' : '☆'}</button>
+            <button class="add-to-list-btn" onclick="event.stopPropagation(); window.showAddToListMenu('${ch.url}', this)" tabindex="-1" title="Add to list">☰</button>
+            ${listBtnHtml}
+            <div class="channel-main">
+                <span class="ch-name">${ch.name}</span>
+                <span class="ch-group" style="margin-left:auto;">${ch.category}</span>
+            </div>
+        `;
+
+        item.onclick = () => {
+            const channelIndex = this.state.channels.findIndex(c => c.url === ch.url);
+            this.selectChannel(ch, item, channelIndex);
+        };
+        item.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                const channelIndex = this.state.channels.findIndex(c => c.url === ch.url);
+                this.selectChannel(ch, item, channelIndex);
+            }
+        };
+
+        return item;
+    }
+
 
     playChannel(channel) {
         this.state.currentChannel = channel;

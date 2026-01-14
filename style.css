@@ -1228,3 +1228,237 @@ input:focus {
         font-size: 8px;
     }
 }
+
+/* ===== FAVORITES LISTS ===== */
+.fav-lists-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--terminal-gray);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.fav-new-list-btn {
+    background: transparent;
+    border: 1px solid var(--terminal-green-dim);
+    color: var(--terminal-green);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fav-new-list-btn:hover {
+    background: var(--terminal-green);
+    color: var(--terminal-bg);
+    box-shadow: 0 0 10px var(--terminal-green-glow);
+}
+
+.fav-section-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid var(--terminal-gray);
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+}
+
+.fav-section-header:hover {
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.fav-section-toggle {
+    color: var(--terminal-cyan);
+    font-size: 10px;
+    width: 12px;
+    text-align: center;
+}
+
+.fav-section-name {
+    color: var(--terminal-green);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0 0 5px var(--terminal-green-glow);
+}
+
+.fav-section-count {
+    color: var(--terminal-muted);
+    font-size: 10px;
+    margin-left: 4px;
+}
+
+.fav-section-delete {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--terminal-red);
+    color: var(--terminal-red);
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    opacity: 0.6;
+    transition: all 0.15s;
+}
+
+.fav-section-delete:hover {
+    opacity: 1;
+    background: var(--terminal-red);
+    color: var(--terminal-bg);
+    box-shadow: 0 0 8px var(--terminal-red);
+}
+
+.fav-section-content {
+    border-bottom: 1px solid var(--terminal-gray);
+}
+
+.fav-section-empty {
+    padding: 12px 20px;
+    color: var(--terminal-muted);
+    font-size: 11px;
+    font-style: italic;
+}
+
+/* Add to list button */
+.add-to-list-btn {
+    background: transparent;
+    border: 1px solid var(--terminal-gray);
+    color: var(--terminal-muted);
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.add-to-list-btn:hover {
+    border-color: var(--terminal-cyan);
+    color: var(--terminal-cyan);
+    background: rgba(0, 212, 255, 0.1);
+}
+
+/* Remove from list button */
+.list-remove-btn {
+    background: transparent;
+    border: 1px solid var(--terminal-gray);
+    color: var(--terminal-muted);
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.list-remove-btn:hover {
+    border-color: var(--terminal-red);
+    color: var(--terminal-red);
+    background: rgba(255, 51, 102, 0.1);
+}
+
+/* Add to list dropdown menu */
+.add-to-list-menu {
+    background: var(--terminal-bg);
+    border: 1px solid var(--terminal-green-dim);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 20px var(--terminal-green-glow);
+    min-width: 160px;
+    max-width: 220px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    animation: menuFadeIn 0.15s ease-out;
+}
+
+@keyframes menuFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.add-to-list-menu .menu-header {
+    padding: 8px 12px;
+    color: var(--terminal-cyan);
+    font-weight: bold;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--terminal-gray);
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.add-to-list-menu .menu-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.1s;
+}
+
+.add-to-list-menu .menu-item:hover {
+    background: var(--terminal-green-glow);
+    color: var(--terminal-green);
+}
+
+.add-to-list-menu .menu-item.in-list {
+    color: var(--terminal-green);
+}
+
+.add-to-list-menu .menu-item.in-list .menu-check {
+    color: var(--terminal-green);
+    text-shadow: 0 0 5px var(--terminal-green);
+}
+
+.add-to-list-menu .menu-check {
+    width: 12px;
+    text-align: center;
+    font-size: 10px;
+}
+
+.add-to-list-menu .menu-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.add-to-list-menu .menu-divider {
+    height: 1px;
+    background: var(--terminal-gray);
+    margin: 4px 0;
+}
+
+.add-to-list-menu .menu-new {
+    color: var(--terminal-amber);
+    font-weight: bold;
+}
+
+.add-to-list-menu .menu-new:hover {
+    background: rgba(255, 176, 0, 0.1);
+    color: var(--terminal-amber);
+}
