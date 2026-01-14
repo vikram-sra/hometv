@@ -206,28 +206,30 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Update Notification -->
+                    <div id="updateNotification" class="terminal-overlay hidden"
+                        style="z-index: 2001; background: rgba(0,0,0,0.9);">
+                        <div class="boot-text" style="text-align: center;">
+                            <div class="line" style="color: var(--terminal-green); font-weight: bold;">SYSTEM UPDATE
+                                AVAILABLE</div>
+                            <div class="line" style="margin: 10px 0;">A new version of the terminal software has been
+                                downloaded.</div>
+                            <div class="line" style="margin-top: 20px;">
+                                <button class="hw-btn"
+                                    style="width: auto; padding: 5px 20px; font-size: 12px; font-family: inherit;"
+                                    onclick="window.applyUpdate()">
+                                    &gt; REBOOT_SYSTEM
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </main>
             </div>
             <div class="tv-controls">
-                <div class="tv-buttons">
-                    <div class="hw-volume-dial">
-                        <div class="hw-vol-slider-container" id="hw-vol-slider" tabindex="8">
-                            <div class="hw-vol-slider-fill" id="hw-vol-fill" style="width: 50%"></div>
-                        </div>
-                        <span style="user-select:none">AUDIO_GAIN</span>
-                    </div>
-
-                    <div
-                        style="flex: 1; margin: 0 40px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                        <div class="hw-progress-container" id="hw-seek" tabindex="11">
-                            <div class="hw-progress-bar" id="hw-progress"></div>
-                        </div>
-                        <div class="brand-name" style="margin-top: -10px; user-select:none">STREAM.SYS P-800 //
-                            TELEVISION_RECEIVER</div>
-                    </div>
-
+                <div class="tv-buttons" style="width: 100%; align-items: center;">
+                    <!-- 1. Buttons (Moved to Left) -->
                     <div class="tv-buttons control-grid">
-                        <!-- Grid Container for buttons -->
                         <button class="hw-btn" id="hw-play-btn" tabindex="9"><span
                                 class="material-icons-round">play_arrow</span></button>
                         <button class="hw-btn" id="hw-mute-btn" tabindex="10"><span
@@ -238,11 +240,22 @@
                                 class="material-icons-round">screen_rotation</span></button>
                         <button class="hw-btn" id="hw-pip-btn" tabindex="13"><span
                                 class="material-icons-round">picture_in_picture_alt</span></button>
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 4px; user-select:none">
-                            <div class="tv-indicator" id="ui-indicator"></div>
-                            <span style="font-size: 7px; color: #444; font-weight: bold;">SIG_LOCK</span>
+                    </div>
+
+                    <!-- 2. Progress (Middle) - Removed Brand Name -->
+                    <div
+                        style="flex: 1; margin: 0 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div class="hw-progress-container" id="hw-seek" tabindex="11" style="margin-bottom: 0;">
+                            <div class="hw-progress-bar" id="hw-progress"></div>
                         </div>
+                    </div>
+
+                    <!-- 3. Volume (Moved to Right) -->
+                    <div class="hw-volume-dial">
+                        <div class="hw-vol-slider-container" id="hw-vol-slider" tabindex="8">
+                            <div class="hw-vol-slider-fill" id="hw-vol-fill" style="width: 50%"></div>
+                        </div>
+                        <span style="user-select:none; margin-top: 4px;">AUDIO_GAIN</span>
                     </div>
                 </div>
             </div>

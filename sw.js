@@ -1,5 +1,5 @@
 // HOME TV Service Worker v1.0
-const CACHE_NAME = 'hometv-v1';
+const CACHE_NAME = 'hometv-v2';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -47,51 +47,48 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - Stale-While-Revalidate for static, Network-First for interactions
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
-    // Skip streaming URLs (m3u8, ts segments)
-    if (url.pathname.includes('.m3u8') ||
-        url.pathname.includes('.ts') ||
-        url.pathname.includes('.m3u') ||
+    // Skip streaming URLs (m3u8, ts segments, playlist updates)
+    if (url.pathname.endsWith('.m3u8') ||
+        url.pathname.endsWith('.ts') ||
+        url.pathname.endsWith('.m3u') ||
         url.hostname.includes('iptv')) {
         return;
     }
 
+    // JSON Data / API calls -> Network First (Freshness priority)
+    if (url.pathname.endsWith('.json')) {
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // Static Assets (CSS, JS, Fonts, HTML) -> Stale-While-Revalidate
+    // Fastest load time, updates in background for next visit
     event.respondWith(
-        caches.match(event.request)
-            .then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-
-                return fetch(event.request)
-                    .then((response) => {
-                        // Don't cache non-successful responses
-                        if (!response || response.status !== 200) {
-                            return response;
-                        }
-
-                        // Cache CDN assets
-                        if (CDN_ASSETS.some(cdn => event.request.url.includes(cdn))) {
-                            const responseClone = response.clone();
-                            caches.open(CACHE_NAME)
-                                .then((cache) => cache.put(event.request, responseClone));
-                        }
-
-                        return response;
-                    })
-                    .catch(() => {
-                        // Offline fallback for navigation
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('./index.html');
-                        }
-                    });
-            })
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.match(event.request).then((cachedResponse) => {
+                const fetchPromise = fetch(event.request).then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                }).catch(() => {
+                    // Offline fallback
+                    if (event.request.mode === 'navigate') {
+                        return cache.match('./index.html');
+                    }
+                });
+                return cachedResponse || fetchPromise;
+            });
+        })
     );
 });
 

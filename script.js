@@ -62,7 +62,8 @@ class TVApp {
             statusDash: document.getElementById('statusDashboard'),
             helpOverlay: document.getElementById('helpOverlay'),
             themeSelect: document.getElementById('themeSelect'),
-            collapseBtn: document.getElementById('collapseBtn')
+            collapseBtn: document.getElementById('collapseBtn'),
+            updateNotification: document.getElementById('updateNotification')
         };
 
         this.plyr = null;
@@ -118,6 +119,7 @@ class TVApp {
             this.renderFavoritesView();
         };
         window.showAddToListMenu = (url, btn) => this.showAddToListMenu(url, btn);
+        window.applyUpdate = () => this.applyUpdate();
         window.removeFromFavList = (listId, url) => {
             this.removeChannelFromList(listId, url);
             this.renderFavoritesView();
@@ -129,10 +131,60 @@ class TVApp {
             navigator.serviceWorker.register('./sw.js')
                 .then(reg => {
                     console.log('> SERVICE_WORKER: Registered', reg.scope);
+
+                    // Check for updates on load
+                    if (reg.waiting) {
+                        this.showUpdateNotification(reg.waiting);
+                        return;
+                    }
+
+                    reg.onupdatefound = () => {
+                        const installingWorker = reg.installing;
+                        installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'installed') {
+                                if (navigator.serviceWorker.controller) {
+                                    // New update available
+                                    console.log('> SERVICE_WORKER: New content is available; please refresh.');
+                                    this.showUpdateNotification(installingWorker);
+                                } else {
+                                    console.log('> SERVICE_WORKER: Content is cached for offline use.');
+                                }
+                            }
+                        };
+                    };
                 })
                 .catch(err => {
                     console.warn('> SERVICE_WORKER: Registration failed', err);
                 });
+
+            // Check for updates periodically (every 60 minutes)
+            setInterval(() => {
+                navigator.serviceWorker.ready.then(reg => {
+                    console.log('> SERVICE_WORKER: Checking for updates...');
+                    reg.update();
+                });
+            }, 60 * 60 * 1000);
+
+            // Reload when new SW takes control
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                window.location.reload();
+                refreshing = true;
+            });
+        }
+    }
+
+    showUpdateNotification(worker) {
+        if (this.ui.updateNotification) {
+            this.ui.updateNotification.classList.remove('hidden');
+            this.pendingUpdateWorker = worker;
+        }
+    }
+
+    applyUpdate() {
+        if (this.pendingUpdateWorker) {
+            this.pendingUpdateWorker.postMessage('skipWaiting');
         }
     }
 
@@ -1020,7 +1072,6 @@ class TVApp {
         this.ui.displayTitle.dataset.originalTitle = this.ui.displayTitle.textContent;
 
         this.ui.displayInfo.innerHTML = `<span style="color:var(--terminal-muted)">GENRE:</span> ${channel.groupRaw}`;
-        this.ui.indicator.classList.add('on');
 
         this.ui.overlay.classList.remove('hidden');
         this.ui.bootText.innerHTML = `
