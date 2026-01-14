@@ -191,7 +191,9 @@ body::after {
 .sidebar.collapsed .channel-item .channel-main,
 .sidebar.collapsed .fav-lists-header,
 .sidebar.collapsed .fav-section-header,
-.sidebar.collapsed .fav-section-empty {
+.sidebar.collapsed .fav-section-empty,
+.sidebar.collapsed .channel-item .add-to-list-btn,
+.sidebar.collapsed .channel-item .list-remove-btn {
     display: none;
 }
 
