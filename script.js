@@ -48,7 +48,6 @@ class TVApp {
             displayInfo: document.getElementById('displayInfo'),
             video: document.getElementById('video'),
             sidebar: document.getElementById('sidebar'),
-            indicator: document.getElementById('ui-indicator'),
             playlistSelect: document.getElementById('playlistSelect'),
             hwPlay: document.getElementById('hw-play-btn'),
             hwMute: document.getElementById('hw-mute-btn'),
