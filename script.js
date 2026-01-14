@@ -17,7 +17,16 @@ class TVApp {
             recents: JSON.parse(localStorage.getItem('recent_channels') || '[]'),
             volume: parseFloat(localStorage.getItem('tv_volume') || '0.5'),
             viewMode: localStorage.getItem('view_mode') || 'list',
-            groupBy: ''
+            groupBy: '',
+            theme: localStorage.getItem('tv_theme') || 'green',
+            sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
+            // Retry configuration for exponential backoff
+            retryConfig: {
+                maxRetries: 3,
+                baseDelay: 1000,
+                maxDelay: 10000,
+                currentRetry: 0
+            }
         };
 
         this.ui = {
@@ -47,7 +56,9 @@ class TVApp {
             hwSeek: document.getElementById('hw-seek'),
             hwProgress: document.getElementById('hw-progress'),
             statusDash: document.getElementById('statusDashboard'),
-            helpOverlay: document.getElementById('helpOverlay')
+            helpOverlay: document.getElementById('helpOverlay'),
+            themeSelect: document.getElementById('themeSelect'),
+            collapseBtn: document.getElementById('collapseBtn')
         };
 
         this.plyr = null;
@@ -64,17 +75,84 @@ class TVApp {
             if (opt.value === startUrl) this.ui.playlistSelect.value = startUrl;
         });
 
+        // Initialize theme
+        this.applyTheme(this.state.theme);
+        if (this.ui.themeSelect) {
+            this.ui.themeSelect.value = this.state.theme;
+        }
+
+        // Initialize sidebar state
+        if (this.state.sidebarCollapsed) {
+            this.ui.sidebar.classList.add('collapsed');
+        }
+
         this.setupListeners();
         this.setupPlayer();
         this.setupHardwareControls();
         this.setupKeyboard();
+        this.setupThemeAndCollapse();
 
         this.loadPlaylist(startUrl);
+
+        // Register Service Worker for PWA
+        this.registerServiceWorker();
 
         // Global exposed function for onclick handlers in HTML
         window.setListTab = (tab, el) => this.setListTab(tab, el);
         window.toggleFavoriteManual = (url, btn) => this.toggleFavoriteManual(url, btn);
         window.toggleConfig = () => this.toggleConfig();
+    }
+
+    registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    console.log('> SERVICE_WORKER: Registered', reg.scope);
+                })
+                .catch(err => {
+                    console.warn('> SERVICE_WORKER: Registration failed', err);
+                });
+        }
+    }
+
+    applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        this.state.theme = theme;
+        localStorage.setItem('tv_theme', theme);
+
+        // Update theme-color meta tag
+        const themeColors = {
+            green: '#00ff41',
+            amber: '#ffb000',
+            cyan: '#00d4ff',
+            red: '#ff3366'
+        };
+        const metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (metaTheme) {
+            metaTheme.content = themeColors[theme] || themeColors.green;
+        }
+    }
+
+    setupThemeAndCollapse() {
+        // Theme switcher
+        if (this.ui.themeSelect) {
+            this.ui.themeSelect.onchange = () => {
+                this.applyTheme(this.ui.themeSelect.value);
+            };
+        }
+
+        // Sidebar collapse button
+        if (this.ui.collapseBtn) {
+            this.ui.collapseBtn.onclick = () => {
+                this.toggleSidebarCollapse();
+            };
+        }
+    }
+
+    toggleSidebarCollapse() {
+        this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
+        this.ui.sidebar.classList.toggle('collapsed', this.state.sidebarCollapsed);
+        localStorage.setItem('sidebar_collapsed', this.state.sidebarCollapsed);
     }
 
     setupListeners() {
@@ -415,12 +493,20 @@ class TVApp {
             console.error(err);
             this.ui.channelList.innerHTML = `
                 <div style="padding:20px; color:var(--terminal-red)">
-                    <div>&gt; ERR_CONNECTION_FAILED</div>
+                    <div>> ERR_CONNECTION_FAILED</div>
                     <div style="color:var(--terminal-muted); font-size:10px; margin-top:5px">${err.message}</div>
-                    <div style="margin-top:10px">&gt; CHECK URL OR TRY PRESET</div>
+                    <div style="margin-top:10px">> CHECK URL OR TRY PRESET</div>
+                    <button onclick="window.retryPlaylist()" style="background:transparent; border:1px solid var(--terminal-amber); color:var(--terminal-amber); padding:8px 16px; font-family:inherit; cursor:pointer; margin-top:15px; font-size:11px;">
+                        > RETRY_CONNECTION
+                    </button>
                 </div>`;
             this.ui.statusText.textContent = 'ERROR';
             this.ui.statusDot.classList.add('error');
+
+            // Expose retry function
+            window.retryPlaylist = () => {
+                this.loadPlaylist(this.ui.sourceInput.value || this.DEFAULT_PLAYLIST);
+            };
         }
     }
 
@@ -537,10 +623,11 @@ class TVApp {
             item.dataset.index = i;
             item.tabIndex = 7;
 
-            // Safe logo - lazy loaded
-            const logoHtml = ch.logo ?
-                `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%231a1a1a\'/%3E%3Ctext y=\'50%25\' x=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'middle\' fill=\'%23333\' font-size=\'40\' font-family=\'monospace\'%3ETV%3C/text%3E%3C/svg%3E'">'` :
-                `<div class="ch-logo" style="display:flex;align-items:center;justify-content:center;color:#333;font-size:10px;">TV</div>`;
+            // Safe logo - lazy loaded with fallback
+            const fallbackSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231a1a1a'/%3E%3Ctext y='50%25' x='50%25' text-anchor='middle' dominant-baseline='middle' fill='%23333' font-size='40' font-family='monospace'%3ETV%3C/text%3E%3C/svg%3E";
+            const logoHtml = ch.logo
+                ? `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='${fallbackSvg}'">`
+                : `<div class="ch-logo"><span>TV</span></div>`;
 
             item.innerHTML = `
                 ${logoHtml}
@@ -665,36 +752,113 @@ class TVApp {
     }
 
     handleHlsError(data, hls) {
+        const config = this.state.retryConfig;
+
         if (data.fatal) {
             switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                    hls.startLoad();
+                    // Use exponential backoff for network errors
+                    if (config.currentRetry < config.maxRetries) {
+                        const delay = this.calculateBackoffDelay(config.currentRetry);
+                        config.currentRetry++;
+
+                        console.log(`> STREAM_RETRY: Attempt ${config.currentRetry}/${config.maxRetries} in ${delay}ms`);
+                        this.showRetrying(config.currentRetry, config.maxRetries, delay);
+
+                        setTimeout(() => {
+                            hls.startLoad();
+                        }, delay);
+                    } else {
+                        config.currentRetry = 0;
+                        this.showError('NETWORK_ERROR', true);
+                    }
                     break;
+
                 case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log('> STREAM: Recovering from media error...');
                     hls.recoverMediaError();
                     break;
+
                 default:
+                    config.currentRetry = 0;
                     hls.destroy();
-                    this.showError('STREAM_OFFLINE');
+                    this.showError('STREAM_OFFLINE', true);
                     break;
             }
         }
     }
 
-    showError(code) {
+    calculateBackoffDelay(retryCount) {
+        const config = this.state.retryConfig;
+        // Exponential backoff: baseDelay * 2^retryCount with jitter
+        const exponentialDelay = config.baseDelay * Math.pow(2, retryCount);
+        const jitter = Math.random() * 500; // Add random jitter up to 500ms
+        return Math.min(exponentialDelay + jitter, config.maxDelay);
+    }
+
+    showRetrying(attempt, maxAttempts, delay) {
         this.ui.overlay.classList.remove('hidden');
         this.ui.bootText.innerHTML = `
-            <div class="line error-text">&gt; ERROR: ${code}</div>
-            <div class="line" style="animation-delay:0.2s; color:var(--terminal-muted)">&gt; STREAM MAY BE OFFLINE OR GEO-BLOCKED</div>
-            <div class="line" style="animation-delay:0.4s; color:var(--terminal-amber)">&gt; SELECT ANOTHER CHANNEL_</div>
+            <div class="line" style="color:var(--terminal-amber)">> STREAM_INTERRUPTED</div>
+            <div class="line" style="animation-delay:0.2s">> RETRY_ATTEMPT: ${attempt}/${maxAttempts}</div>
+            <div class="line" style="animation-delay:0.4s">> RECONNECTING IN ${Math.round(delay / 1000)}s...</div>
+            <div class="line" style="animation-delay:0.6s; color:var(--terminal-muted)">> EXPONENTIAL_BACKOFF_ACTIVE</div>
+        `;
+        this.ui.displayTitle.textContent = '[ RECONNECTING... ]';
+
+        // Auto-hide overlay if stream recovers
+        setTimeout(() => {
+            if (this.ui.video.readyState >= 2 && !this.ui.video.paused) {
+                this.ui.overlay.classList.add('hidden');
+                this.state.retryConfig.currentRetry = 0;
+            }
+        }, delay + 1000);
+    }
+
+    showError(code, allowRetry = false) {
+        this.state.retryConfig.currentRetry = 0;
+        this.ui.overlay.classList.remove('hidden');
+
+        const retryButton = allowRetry && this.state.currentChannel ? `
+            <div class="line" style="animation-delay:0.6s">
+                <button onclick="window.retryStream()" style="background:transparent; border:1px solid var(--terminal-amber); color:var(--terminal-amber); padding:8px 16px; font-family:inherit; cursor:pointer; margin-top:10px;">
+                    > RETRY_CONNECTION
+                </button>
+            </div>
+        ` : '';
+
+        this.ui.bootText.innerHTML = `
+            <div class="line error-text">> ERROR: ${code}</div>
+            <div class="line" style="animation-delay:0.2s; color:var(--terminal-muted)">> STREAM MAY BE OFFLINE OR GEO-BLOCKED</div>
+            <div class="line" style="animation-delay:0.4s; color:var(--terminal-amber)">> SELECT ANOTHER CHANNEL_</div>
+            ${retryButton}
         `;
         this.ui.displayTitle.textContent = '[ SIGNAL LOST ]';
         this.ui.indicator.classList.remove('on');
+
+        // Expose retry function
+        window.retryStream = () => {
+            if (this.state.currentChannel) {
+                this.playChannel(this.state.currentChannel);
+            }
+        };
     }
 
     showAutoplayError() {
-        this.ui.bootText.innerHTML = '<div class="line" style="color:var(--terminal-amber)">&gt; AUTOPLAY_BLOCKED</div><div class="line">&gt; CLICK_SCREEN_TO_INITIALIZE</div>';
+        this.ui.bootText.innerHTML = `
+            <div class="line" style="color:var(--terminal-amber)">> AUTOPLAY_BLOCKED</div>
+            <div class="line" style="animation-delay:0.2s">> BROWSER_POLICY_RESTRICTION</div>
+            <div class="line" style="animation-delay:0.4s">> CLICK_SCREEN_TO_INITIALIZE</div>
+        `;
         this.ui.overlay.classList.remove('hidden');
+
+        // Allow clicking overlay to play
+        this.ui.overlay.onclick = () => {
+            this.ui.video.play().then(() => {
+                this.ui.overlay.classList.add('hidden');
+                this.ui.overlay.onclick = null;
+            }).catch(() => { });
+        };
     }
 }
 

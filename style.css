@@ -12,6 +12,42 @@
     --tv-bezel: #1a1a1a;
     --tv-inner: #050505;
     --tv-glow: rgba(0, 255, 65, 0.05);
+
+    /* Theme-aware accent colors (default: green) */
+    --accent: var(--terminal-green);
+    --accent-dim: var(--terminal-green-dim);
+    --accent-glow: var(--terminal-green-glow);
+}
+
+/* Theme: Amber */
+[data-theme="amber"] {
+    --accent: #ffb000;
+    --accent-dim: #cc8800;
+    --accent-glow: rgba(255, 176, 0, 0.15);
+    --terminal-green: #ffb000;
+    --terminal-green-dim: #cc8800;
+    --terminal-green-glow: rgba(255, 176, 0, 0.15);
+}
+
+/* Theme: Cyan */
+[data-theme="cyan"] {
+    --accent: #00d4ff;
+    --accent-dim: #00a0cc;
+    --accent-glow: rgba(0, 212, 255, 0.15);
+    --terminal-green: #00d4ff;
+    --terminal-green-dim: #00a0cc;
+    --terminal-green-glow: rgba(0, 212, 255, 0.15);
+}
+
+/* Theme: Matrix (Red) */
+[data-theme="red"] {
+    --accent: #ff3366;
+    --accent-dim: #cc2244;
+    --accent-glow: rgba(255, 51, 102, 0.15);
+    --terminal-green: #ff3366;
+    --terminal-green-dim: #cc2244;
+    --terminal-green-glow: rgba(255, 51, 102, 0.15);
+    --terminal-amber: #ff6600;
 }
 
 * {
@@ -115,7 +151,7 @@ body::after {
 /* ===== SIDEBAR ===== */
 .sidebar {
     width: 350px;
-    min-width: 250px;
+    min-width: 60px;
     max-width: 600px;
     background: var(--terminal-bg);
     display: flex;
@@ -126,6 +162,55 @@ body::after {
     resize: horizontal;
     overflow: hidden;
     position: relative;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+    width: 60px !important;
+    min-width: 60px;
+    resize: none;
+}
+
+.sidebar.collapsed .sidebar-header {
+    flex-direction: column;
+    padding: 12px 8px;
+    gap: 12px;
+}
+
+.sidebar.collapsed .system-label,
+.sidebar.collapsed .theme-switcher,
+.sidebar.collapsed .system-info,
+.sidebar.collapsed .config-panel,
+.sidebar.collapsed .nav-primary,
+.sidebar.collapsed .cmd-line,
+.sidebar.collapsed .status-bar,
+.sidebar.collapsed .channel-item .ch-name,
+.sidebar.collapsed .channel-item .ch-group,
+.sidebar.collapsed .channel-item .fav-btn,
+.sidebar.collapsed .channel-item .channel-main {
+    display: none;
+}
+
+.sidebar.collapsed .channel-item {
+    justify-content: center;
+    align-items: center;
+    padding: 6px;
+    min-height: 48px;
+}
+
+.sidebar.collapsed .channel-item .ch-logo {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed .channel-list {
+    padding: 4px;
+}
+
+.sidebar.collapsed .collapse-btn {
+    transform: rotate(180deg);
 }
 
 .sidebar::after {
@@ -138,6 +223,82 @@ body::after {
     font-size: 10px;
     pointer-events: none;
     padding: 4px;
+}
+
+.sidebar.collapsed::after {
+    display: none;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--terminal-green-dim);
+    background: linear-gradient(180deg, rgba(0, 255, 65, 0.05) 0%, transparent 100%);
+}
+
+.sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.system-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--terminal-green);
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--terminal-green-glow);
+}
+
+.collapse-btn {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid var(--terminal-green-dim);
+    color: var(--terminal-green);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.collapse-btn:hover {
+    background: var(--terminal-green);
+    color: var(--terminal-bg);
+}
+
+/* Theme Switcher */
+.theme-switcher {
+    display: flex;
+    align-items: center;
+}
+
+.theme-select {
+    background: var(--terminal-bg);
+    border: 1px solid var(--terminal-gray);
+    color: var(--terminal-green);
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 10px;
+    cursor: pointer;
+    outline: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.theme-select:focus {
+    border-color: var(--terminal-green);
+}
+
+.theme-select option {
+    background: var(--terminal-bg);
+    color: var(--terminal-green);
 }
 
 .terminal-header {
@@ -796,6 +957,26 @@ body::after {
     align-items: center;
     justify-content: center;
     position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.player-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* Responsive video wrapper for aspect ratio */
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .plyr {
@@ -803,6 +984,29 @@ body::after {
     height: 100%;
     --plyr-color-main: var(--terminal-green);
     background: #000;
+}
+
+.plyr--video {
+    height: 100%;
+}
+
+.plyr__video-wrapper {
+    height: 100%;
+}
+
+/* When sidebar is collapsed, video gets more space */
+.sidebar.collapsed+.tv-container {
+    flex: 1;
+}
+
+/* Fullscreen adjustments */
+.plyr--fullscreen-active {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
 }
 
 .fav-btn {

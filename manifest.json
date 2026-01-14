@@ -1,0 +1,22 @@
+{
+  "name": "HOME TV",
+  "short_name": "HOME TV",
+  "description": "Retro-styled IPTV streaming terminal",
+  "start_url": "/hometv/",
+  "scope": "/hometv/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0a0a",
+  "theme_color": "#00ff41",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
