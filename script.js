@@ -645,33 +645,14 @@ class TVApp {
         const fragment = document.createDocumentFragment();
         for (let i = start; i < end; i++) {
             const ch = this.state.filteredChannels[i];
-            const isFav = this.state.favorites.has(ch.url);
-            const item = document.createElement('div');
-            item.className = 'channel-item';
-            item.dataset.index = i;
-            item.tabIndex = 7;
+            const item = this.createChannelItem(ch, i);
 
-            // Safe logo - lazy loaded
-            const logoHtml = ch.logo ?
-                `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'%3E%3Crect width=\\'100\\' height=\\'100\\' fill=\\'%231a1a1a\\'/%3E%3Ctext y=\\'50%25\\' x=\\'50%25\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\' fill=\\'%23333\\' font-size=\\'40\\' font-family=\\'monospace\\'%3ETV%3C/text%3E%3C/svg%3E'">` :
-                `<div class="ch-logo" style="display:flex;align-items:center;justify-content:center;color:#333;font-size:10px;">TV</div>`;
-
-            item.innerHTML = `
-                ${logoHtml}
-                <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.toggleFavoriteManual('${ch.url}', this)" tabindex="-1">${isFav ? '★' : '☆'}</button>
-                <div class="channel-main">
-                    <span class="ch-name">${ch.name}</span>
-                    <span class="ch-group" style="margin-left:auto;">${ch.category}</span>
-                </div>
-            `;
-            item.onclick = () => this.selectChannel(ch, item, i);
-            item.onkeydown = (e) => {
-                if (e.key === 'Enter') this.selectChannel(ch, item, i);
-            };
+            // Add focus handler for spatial nav
             item.onfocus = () => {
                 this.state.selectedIndex = i;
                 item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             };
+
             fragment.appendChild(item);
         }
 
@@ -973,14 +954,18 @@ class TVApp {
             `<div class="ch-logo" style="display:flex;align-items:center;justify-content:center;color:#333;font-size:10px;">TV</div>`;
 
         // Show list button only if not in "all" view
-        const listBtnHtml = listId !== 'all' ?
+        const listBtnHtml = listId !== 'all' && listId !== null ?
             `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')" title="Remove from list">−</button>` :
+            '';
+
+        const addToListBtnHtml = this.state.activeTab === 'favorites' ?
+            `<button class="add-to-list-btn" onclick="event.stopPropagation(); window.showAddToListMenu('${ch.url}', this)" tabindex="-1" title="Add to list">☰</button>` :
             '';
 
         item.innerHTML = `
             ${logoHtml}
             <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.toggleFavoriteManual('${ch.url}', this)" tabindex="-1">${isFav ? '★' : '☆'}</button>
-            <button class="add-to-list-btn" onclick="event.stopPropagation(); window.showAddToListMenu('${ch.url}', this)" tabindex="-1" title="Add to list">☰</button>
+            ${addToListBtnHtml}
             ${listBtnHtml}
             <div class="channel-main">
                 <span class="ch-name">${ch.name}</span>
