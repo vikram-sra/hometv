@@ -183,6 +183,7 @@ body::after {
 .sidebar.collapsed .config-panel,
 .sidebar.collapsed .nav-primary,
 .sidebar.collapsed .cmd-line,
+.sidebar.collapsed .search-section,
 .sidebar.collapsed .status-bar,
 .sidebar.collapsed .channel-item .ch-name,
 .sidebar.collapsed .channel-item .ch-group,
@@ -425,22 +426,39 @@ body::after {
 }
 
 .system-info {
-    padding: 16px 16px 8px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--terminal-gray);
     cursor: pointer;
     user-select: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.2);
+    transition: all 0.15s;
 }
 
 .system-info:hover {
-    color: var(--terminal-green-dim);
+    background: rgba(0, 255, 65, 0.05);
+    color: var(--terminal-green);
+}
+
+.config-label {
+    font-weight: bold;
+    color: var(--terminal-muted);
+}
+
+.system-info:hover .config-label {
+    color: var(--terminal-green);
 }
 
 .toggle-icon {
     font-family: monospace;
     font-weight: bold;
+    font-size: 10px;
+    color: var(--terminal-cyan);
 }
 
 .filter-label {
@@ -472,25 +490,42 @@ body::after {
     color: var(--terminal-green);
 }
 
+/* Search Section */
+.search-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--terminal-gray);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.search-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--terminal-muted);
+    letter-spacing: 1px;
+    min-width: 60px;
+}
+
 /* Tabs */
 .nav-primary {
     display: flex;
-    border-top: 1px solid var(--terminal-gray);
     border-bottom: 1px solid var(--terminal-gray);
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.25);
 }
 
 .tab {
     flex: 1;
     text-align: center;
-    padding: 12px 8px;
-    font-size: 11px;
+    padding: 10px 8px;
+    font-size: 10px;
     color: var(--terminal-muted);
     cursor: pointer;
     border: none;
     background: transparent;
     border-bottom: 2px solid transparent;
-    transition: all 0.2s;
+    transition: all 0.15s;
     text-transform: uppercase;
     font-weight: bold;
     letter-spacing: 1px;
@@ -1239,18 +1274,18 @@ input:focus {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding: 8px 12px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--terminal-gray);
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .fav-new-list-btn {
     background: transparent;
     border: 1px solid var(--terminal-green-dim);
     color: var(--terminal-green);
-    padding: 6px 12px;
+    padding: 5px 10px;
     font-family: inherit;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.15s;
@@ -1267,8 +1302,8 @@ input:focus {
 .fav-section-header {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.4);
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.25);
     border-bottom: 1px solid var(--terminal-gray);
     cursor: pointer;
     user-select: none;
@@ -1281,14 +1316,14 @@ input:focus {
 
 .fav-section-toggle {
     color: var(--terminal-cyan);
-    font-size: 10px;
+    font-size: 9px;
     width: 12px;
     text-align: center;
 }
 
 .fav-section-name {
     color: var(--terminal-green);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: bold;
     letter-spacing: 1px;
     text-shadow: 0 0 5px var(--terminal-green-glow);
@@ -1296,7 +1331,7 @@ input:focus {
 
 .fav-section-count {
     color: var(--terminal-muted);
-    font-size: 10px;
+    font-size: 9px;
     margin-left: 4px;
 }
 

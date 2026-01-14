@@ -51,11 +51,11 @@
         </div>
 
         <div class="system-info" onclick="toggleConfig()">
-            Config: <span style="font-weight: bold; letter-spacing: 1px;">Source & Filters</span>
-            <span class="toggle-icon" id="configToggle">[-]</span>
+            <span class="config-label">CONFIG</span>
+            <span class="toggle-icon" id="configToggle">[+]</span>
         </div>
 
-        <div id="configPanel" class="config-panel">
+        <div id="configPanel" class="config-panel collapsed">
             <!-- 1. Source Selection (URL First) -->
             <div class="source-section">
                 <div class="cmd-line">
@@ -131,9 +131,8 @@
         </div>
 
         <!-- 4. Search (Above List) -->
-        <div class="cmd-line"
-            style="padding: 8px 16px; border-bottom: 1px solid var(--terminal-gray); background: var(--terminal-bg);">
-            <span class="prompt" style="min-width: 50px; color: var(--terminal-muted);">SEARCH:</span>
+        <div class="search-section">
+            <span class="search-label">SEARCH:</span>
             <input type="text" class="cmd-input" id="searchInput" placeholder="..." tabindex="5">
         </div>
 
