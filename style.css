@@ -187,7 +187,12 @@ body::after {
 .sidebar.collapsed .channel-item .ch-name,
 .sidebar.collapsed .channel-item .ch-group,
 .sidebar.collapsed .channel-item .fav-btn,
-.sidebar.collapsed .channel-item .channel-main {
+.sidebar.collapsed .channel-item .channel-main,
+.sidebar.collapsed .channel-item .add-to-list-btn,
+.sidebar.collapsed .channel-item .list-remove-btn,
+.sidebar.collapsed .fav-lists-header,
+.sidebar.collapsed .fav-section-header,
+.sidebar.collapsed .fav-section-empty {
     display: none;
 }
 
@@ -1395,6 +1400,7 @@ input:focus {
         opacity: 0;
         transform: translateX(-5px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
