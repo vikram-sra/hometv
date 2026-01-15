@@ -608,7 +608,8 @@ body {
     left: 16px;
     right: 16px;
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 0;
     z-index: 10;
     pointer-events: none;
 }
@@ -622,6 +623,26 @@ body {
 .display-info {
     font-size: 10px;
     color: var(--muted);
+    margin-left: auto;
+}
+
+/* Live Indicator in Header */
+.live-indicator {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    color: var(--red);
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: rgba(255, 51, 51, 0.2);
+    border-radius: 2px;
+}
+
+.live-indicator.active {
+    display: inline-flex;
 }
 
 /* Terminal Overlay */
@@ -725,6 +746,30 @@ body {
     font-size: 22px;
 }
 
+/* Live Dot Animation */
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--red);
+    border-radius: 50%;
+    animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+    }
+}
+
 /* Volume Slider */
 .hw-vol-slider-container {
     width: 80px;
@@ -746,6 +791,40 @@ body {
 }
 
 .hw-vol-slider-fill::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+}
+
+/* Seek Bar */
+.seek-bar-container {
+    flex: 1;
+    height: 6px;
+    background: var(--gray);
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: visible;
+    margin: 0 12px;
+    position: relative;
+}
+
+.seek-bar-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 3px;
+    position: relative;
+    pointer-events: none;
+    max-width: 100%;
+}
+
+.seek-bar-fill::after {
     content: '';
     position: absolute;
     right: -6px;
@@ -910,6 +989,7 @@ body {
 @media (max-width: 768px) {
     .mobile-menu-btn {
         display: flex;
+        left: max(8px, env(safe-area-inset-left));
     }
 
     .sidebar {
@@ -921,6 +1001,9 @@ body {
         transform: translateX(-100%);
         transition: transform 0.15s ease;
         z-index: 1000;
+        padding-left: env(safe-area-inset-left);
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
     .sidebar.open {
@@ -929,9 +1012,34 @@ body {
 
     .display-header {
         top: 50px;
+        left: env(safe-area-inset-left);
     }
 
     .tv-controls {
         opacity: 1;
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Landscape with notch on left */
+@media (max-width: 900px) and (orientation: landscape) {
+    .sidebar {
+        padding-left: env(safe-area-inset-left);
+    }
+
+    .sidebar-header {
+        padding-left: max(12px, env(safe-area-inset-left));
+    }
+
+    .mobile-menu-btn {
+        left: max(8px, env(safe-area-inset-left));
+        top: max(8px, env(safe-area-inset-top));
+    }
+
+    .tv-controls {
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
     }
 }

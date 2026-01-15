@@ -40,12 +40,15 @@ class TVApp {
             video: document.getElementById('video'),
             sidebar: document.getElementById('sidebar'),
             playlistSelect: document.getElementById('playlistSelect'),
+            liveIndicator: document.getElementById('liveIndicator'),
             hwPlay: document.getElementById('hw-play-btn'),
             hwMute: document.getElementById('hw-mute-btn'),
             hwFS: document.getElementById('hw-fs-btn'),
             hwPIP: document.getElementById('hw-pip-btn'),
             hwVolSlider: document.getElementById('hw-vol-slider'),
             hwVolFill: document.getElementById('hw-vol-fill'),
+            seekBar: document.getElementById('seek-bar'),
+            seekFill: document.getElementById('seek-fill'),
             collapseBtn: document.getElementById('collapseBtn'),
             updateNotification: document.getElementById('updateNotification'),
             toast: document.getElementById('toast'),
@@ -341,6 +344,53 @@ class TVApp {
             };
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
+        });
+
+        // Draggable seek bar
+        const updateSeek = (e) => {
+            const rect = this.ui.seekBar.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const video = this.ui.video;
+
+            if (video.seekable && video.seekable.length > 0) {
+                const start = video.seekable.start(0);
+                const end = video.seekable.end(video.seekable.length - 1);
+                video.currentTime = start + (end - start) * pct;
+            } else if (video.duration && isFinite(video.duration)) {
+                video.currentTime = video.duration * pct;
+            }
+
+            this.ui.seekFill.style.width = (pct * 100) + '%';
+        };
+
+        this.ui.seekBar.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            updateSeek(e);
+            const onMove = (e) => updateSeek(e);
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+
+        // Update seek bar as video plays
+        this.ui.video.addEventListener('timeupdate', () => {
+            const video = this.ui.video;
+            let pct = 0;
+
+            if (video.seekable && video.seekable.length > 0) {
+                const start = video.seekable.start(0);
+                const end = video.seekable.end(video.seekable.length - 1);
+                if (end > start) {
+                    pct = (video.currentTime - start) / (end - start);
+                }
+            } else if (video.duration && isFinite(video.duration)) {
+                pct = video.currentTime / video.duration;
+            }
+
+            this.ui.seekFill.style.width = Math.max(0, Math.min(100, pct * 100)) + '%';
         });
 
         this.ui.video.addEventListener('dblclick', () => this.plyr.fullscreen.toggle());
@@ -831,6 +881,9 @@ class TVApp {
 
         this.ui.displayTitle.textContent = `[ ${channel.name.toUpperCase()} ]`;
         this.ui.displayInfo.textContent = channel.category;
+
+        // Show live indicator
+        this.ui.liveIndicator.classList.add('active');
 
         this.ui.overlay.classList.remove('hidden');
         this.ui.bootText.innerHTML = `<div class="line">> Connecting...</div>`;
