@@ -1,36 +1,27 @@
 class TVApp {
     constructor() {
         this.DEFAULT_PLAYLIST = 'https://iptv-org.github.io/iptv/index.m3u';
+        this.db = window.tvDB;
 
         this.state = {
             channels: [],
             filteredChannels: [],
             categories: {},
-            languages: new Set(),
-            favorites: new Set(JSON.parse(localStorage.getItem('fav_channels') || '[]')),
-            // Multiple favorites lists: { listId: { name: string, channels: string[], collapsed: boolean } }
-            favoriteLists: JSON.parse(localStorage.getItem('fav_lists') || '{}'),
-            activeFavList: 'all', // 'all' shows all starred, or a specific list ID
-            favListsCollapsed: JSON.parse(localStorage.getItem('fav_lists_collapsed') || '{}'),
+            favorites: new Set(),
+            favoriteLists: {},
+            favListsCollapsed: {},
             currentChannel: null,
+            lastChannel: null,
             hls: null,
             renderIndex: 0,
-            batchSize: 100,
             selectedIndex: -1,
-            activeTab: 'all',
-            recents: JSON.parse(localStorage.getItem('recent_channels') || '[]'),
-            volume: parseFloat(localStorage.getItem('tv_volume') || '0.5'),
-            viewMode: localStorage.getItem('view_mode') || 'list',
-            groupBy: '',
-            theme: localStorage.getItem('tv_theme') || 'green',
-            sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
-            // Retry configuration for exponential backoff
-            retryConfig: {
-                maxRetries: 3,
-                baseDelay: 1000,
-                maxDelay: 10000,
-                currentRetry: 0
-            }
+            activeTab: 'favorites',
+            recents: [],
+            volume: 0.5,
+            sidebarCollapsed: false,
+            retryConfig: { maxRetries: 2, baseDelay: 1000, currentRetry: 0 },
+            deadChannels: new Map(),
+            isAutoSkipping: false
         };
 
         this.ui = {
@@ -52,40 +43,31 @@ class TVApp {
             hwPlay: document.getElementById('hw-play-btn'),
             hwMute: document.getElementById('hw-mute-btn'),
             hwFS: document.getElementById('hw-fs-btn'),
+            hwPIP: document.getElementById('hw-pip-btn'),
             hwVolSlider: document.getElementById('hw-vol-slider'),
             hwVolFill: document.getElementById('hw-vol-fill'),
-            hwPip: document.getElementById('hw-pip-btn'),
-            hwSeek: document.getElementById('hw-seek'),
-            hwRotate: document.getElementById('hw-rotate-btn'),
-            hwProgress: document.getElementById('hw-progress'),
-            statusDash: document.getElementById('statusDashboard'),
-            helpOverlay: document.getElementById('helpOverlay'),
-            themeSelect: document.getElementById('themeSelect'),
             collapseBtn: document.getElementById('collapseBtn'),
-            updateNotification: document.getElementById('updateNotification')
+            updateNotification: document.getElementById('updateNotification'),
+            toast: document.getElementById('toast'),
+            mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+            sidebarBackdrop: document.getElementById('sidebarBackdrop')
         };
 
         this.plyr = null;
     }
 
-    init() {
-        const saved = localStorage.getItem('playlist_url') || this.DEFAULT_PLAYLIST;
-        const startUrl = (saved === 'favorites' || saved === this.DEFAULT_PLAYLIST) ? saved : this.DEFAULT_PLAYLIST;
+    async init() {
+        await this.db.ensureReady();
+        await this.loadStateFromDB();
 
-        this.ui.sourceInput.value = startUrl;
-        this.ui.playlistSelect.value = (startUrl === 'favorites') ? 'favorites' : 'manual';
+        const saved = await this.db.getPref('playlist_url', this.DEFAULT_PLAYLIST);
+        this.ui.sourceInput.value = saved;
 
+        // Sync playlist dropdown
         Array.from(this.ui.playlistSelect.options).forEach(opt => {
-            if (opt.value === startUrl) this.ui.playlistSelect.value = startUrl;
+            if (opt.value === saved) this.ui.playlistSelect.value = saved;
         });
 
-        // Initialize theme
-        this.applyTheme(this.state.theme);
-        if (this.ui.themeSelect) {
-            this.ui.themeSelect.value = this.state.theme;
-        }
-
-        // Initialize sidebar state
         if (this.state.sidebarCollapsed) {
             this.ui.sidebar.classList.add('collapsed');
         }
@@ -94,90 +76,119 @@ class TVApp {
         this.setupPlayer();
         this.setupHardwareControls();
         this.setupKeyboard();
-        this.setupThemeAndCollapse();
+        this.setupExportImport();
 
-        // Load playlist then switch to favorites tab
-        this.loadPlaylist(startUrl).then(() => {
-            this.setListTab('favorites', document.getElementById('tab-fav'));
-        });
+        // Load playlist then switch to favorites
+        await this.loadPlaylist(saved);
+        this.setListTab('favorites', document.getElementById('tab-fav'));
 
-        // Register Service Worker for PWA
+        // Auto-play last channel if available
+        if (this.state.lastChannel) {
+            const ch = this.state.channels.find(c => c.url === this.state.lastChannel);
+            if (ch) {
+                setTimeout(() => this.playChannel(ch), 500);
+            }
+        }
+
         this.registerServiceWorker();
 
-        // Global exposed function for onclick handlers in HTML
+        // Global functions
         window.setListTab = (tab, el) => this.setListTab(tab, el);
         window.toggleFavoriteManual = (url, btn) => this.toggleFavoriteManual(url, btn);
         window.toggleConfig = () => this.toggleConfig();
-
-        // Favorites list management
         window.createNewFavList = () => this.promptCreateList();
-        window.deleteFavList = (listId) => this.promptDeleteList(listId);
-        window.renameFavList = (listId) => this.promptRenameList(listId);
-        window.toggleFavSection = (listId) => {
-            this.toggleFavListCollapse(listId);
-            this.renderFavoritesView();
-        };
+        window.deleteFavList = (id) => this.promptDeleteList(id);
+        window.toggleFavSection = (id) => { this.toggleFavListCollapse(id); this.renderFavoritesView(); };
         window.showAddToListMenu = (url, btn) => this.showAddToListMenu(url, btn);
         window.applyUpdate = () => this.applyUpdate();
-        window.removeFromFavList = (listId, url) => {
-            this.removeChannelFromList(listId, url);
-            this.renderFavoritesView();
-        };
+        window.removeFromFavList = (id, url) => { this.removeChannelFromList(id, url); this.renderFavoritesView(); };
+    }
+
+    async loadStateFromDB() {
+        try {
+            this.state.favorites = await this.db.getFavorites();
+            this.state.favoriteLists = await this.db.getLists();
+
+            for (const id of Object.keys(this.state.favoriteLists)) {
+                this.state.favListsCollapsed[id] = this.state.favoriteLists[id].collapsed || false;
+            }
+
+            const recents = await this.db.getRecents();
+            this.state.recents = recents.map(r => ({ name: r.name, url: r.url }));
+            this.state.volume = await this.db.getPref('tv_volume', 0.5);
+            this.state.sidebarCollapsed = await this.db.getPref('sidebar_collapsed', false);
+            this.state.lastChannel = await this.db.getPref('last_channel', null);
+
+            const deadList = await this.db.getDeadChannels();
+            this.state.deadChannels = new Map(deadList.map(d => [d.url, d.failCount]));
+        } catch (err) {
+            console.error('> Failed to load state:', err);
+        }
+    }
+
+    setupExportImport() {
+        window.exportData = () => this.exportData();
+        window.importData = () => this.importData();
+
+        const fileInput = document.getElementById('importFileInput');
+        if (fileInput) {
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const data = JSON.parse(await file.text());
+                    await this.db.importAllData(data);
+                    this.showToast('Data imported! Reloading...');
+                    setTimeout(() => window.location.reload(), 1000);
+                } catch (err) {
+                    this.showToast('Import failed: ' + err.message);
+                }
+                fileInput.value = '';
+            };
+        }
+    }
+
+    async exportData() {
+        try {
+            const data = await this.db.exportAllData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `hometv-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            this.showToast('Data exported!');
+        } catch (err) {
+            this.showToast('Export failed');
+        }
+    }
+
+    importData() {
+        document.getElementById('importFileInput')?.click();
+    }
+
+    showToast(message, duration = 3000) {
+        const toast = this.ui.toast;
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), duration);
     }
 
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => {
-                    console.log('> SERVICE_WORKER: Registered', reg.scope);
-
-                    // Check for updates on load
-                    if (reg.waiting) {
-                        this.showUpdateNotification(reg.waiting);
-                        return;
-                    }
-
-                    reg.onupdatefound = () => {
-                        const installingWorker = reg.installing;
-                        installingWorker.onstatechange = () => {
-                            if (installingWorker.state === 'installed') {
-                                if (navigator.serviceWorker.controller) {
-                                    // New update available
-                                    console.log('> SERVICE_WORKER: New content is available; please refresh.');
-                                    this.showUpdateNotification(installingWorker);
-                                } else {
-                                    console.log('> SERVICE_WORKER: Content is cached for offline use.');
-                                }
-                            }
-                        };
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                reg.onupdatefound = () => {
+                    const worker = reg.installing;
+                    worker.onstatechange = () => {
+                        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                            this.ui.updateNotification?.classList.remove('hidden');
+                            this.pendingUpdateWorker = worker;
+                        }
                     };
-                })
-                .catch(err => {
-                    console.warn('> SERVICE_WORKER: Registration failed', err);
-                });
+                };
+            }).catch(() => { });
 
-            // Check for updates periodically (every 60 minutes)
-            setInterval(() => {
-                navigator.serviceWorker.ready.then(reg => {
-                    console.log('> SERVICE_WORKER: Checking for updates...');
-                    reg.update();
-                });
-            }, 60 * 60 * 1000);
-
-            // Reload when new SW takes control
-            let refreshing;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                window.location.reload();
-                refreshing = true;
-            });
-        }
-    }
-
-    showUpdateNotification(worker) {
-        if (this.ui.updateNotification) {
-            this.ui.updateNotification.classList.remove('hidden');
-            this.pendingUpdateWorker = worker;
+            navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
         }
     }
 
@@ -187,44 +198,17 @@ class TVApp {
         }
     }
 
-    applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        this.state.theme = theme;
-        localStorage.setItem('tv_theme', theme);
-
-        // Update theme-color meta tag
-        const themeColors = {
-            green: '#00ff41',
-            amber: '#ffb000',
-            cyan: '#00d4ff',
-            red: '#ff3366'
-        };
-        const metaTheme = document.querySelector('meta[name="theme-color"]');
-        if (metaTheme) {
-            metaTheme.content = themeColors[theme] || themeColors.green;
-        }
-    }
-
-    setupThemeAndCollapse() {
-        // Theme switcher
-        if (this.ui.themeSelect) {
-            this.ui.themeSelect.onchange = () => {
-                this.applyTheme(this.ui.themeSelect.value);
-            };
-        }
-
-        // Sidebar collapse button
-        if (this.ui.collapseBtn) {
-            this.ui.collapseBtn.onclick = () => {
-                this.toggleSidebarCollapse();
-            };
-        }
+    toggleConfig() {
+        const panel = document.getElementById('configPanel');
+        const icon = document.getElementById('configToggle');
+        panel.classList.toggle('collapsed');
+        icon.textContent = panel.classList.contains('collapsed') ? '+' : '−';
     }
 
     toggleSidebarCollapse() {
         this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
         this.ui.sidebar.classList.toggle('collapsed', this.state.sidebarCollapsed);
-        localStorage.setItem('sidebar_collapsed', this.state.sidebarCollapsed);
+        this.db.setPref('sidebar_collapsed', this.state.sidebarCollapsed);
     }
 
     setupListeners() {
@@ -233,13 +217,13 @@ class TVApp {
         let searchTimeout;
         this.ui.searchInput.oninput = () => {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => this.applyFilters(), 250);
+            searchTimeout = setTimeout(() => this.applyFilters(), 200);
         };
 
         this.ui.playlistSelect.onchange = () => {
             const val = this.ui.playlistSelect.value;
             if (val !== 'manual') {
-                if (val !== 'favorites') this.ui.sourceInput.value = val;
+                this.ui.sourceInput.value = val;
                 this.loadPlaylist(val);
             }
         };
@@ -258,7 +242,27 @@ class TVApp {
             }
         };
 
+        if (this.ui.collapseBtn) {
+            this.ui.collapseBtn.onclick = () => this.toggleSidebarCollapse();
+        }
 
+        // Mobile menu toggle
+        if (this.ui.mobileMenuBtn) {
+            this.ui.mobileMenuBtn.onclick = () => this.toggleMobileSidebar();
+        }
+        if (this.ui.sidebarBackdrop) {
+            this.ui.sidebarBackdrop.onclick = () => this.closeMobileSidebar();
+        }
+    }
+
+    toggleMobileSidebar() {
+        this.ui.sidebar.classList.toggle('open');
+        this.ui.sidebarBackdrop.classList.toggle('visible', this.ui.sidebar.classList.contains('open'));
+    }
+
+    closeMobileSidebar() {
+        this.ui.sidebar.classList.remove('open');
+        this.ui.sidebarBackdrop.classList.remove('visible');
     }
 
     setupPlayer() {
@@ -274,238 +278,108 @@ class TVApp {
             else this.ui.video.pause();
         };
 
-        this.ui.hwPip.onclick = async () => {
-            try {
-                if (document.pictureInPictureElement) await document.exitPictureInPicture();
-                else if (this.ui.video.readyState >= 2) await this.ui.video.requestPictureInPicture();
-            } catch (e) { console.error(e); }
-        };
-
         this.ui.hwMute.onclick = () => {
             this.ui.video.muted = !this.ui.video.muted;
-            this.ui.hwMute.classList.toggle('active', this.ui.video.muted);
-            this.ui.hwMute.innerHTML = this.ui.video.muted ? '<span class="material-icons-round">volume_off</span>' : '<span class="material-icons-round">volume_up</span>';
+            this.ui.hwMute.innerHTML = this.ui.video.muted
+                ? '<span class="material-icons-round">volume_off</span>'
+                : '<span class="material-icons-round">volume_up</span>';
         };
 
-        this.ui.hwFS.onclick = () => { this.plyr.fullscreen.toggle(); };
+        this.ui.hwFS.onclick = () => this.plyr.fullscreen.toggle();
 
-        this.ui.hwRotate.onclick = () => {
-            if (screen.orientation && screen.orientation.lock) {
-                // Try Native
-                if (screen.orientation.type.includes('portrait')) {
-                    screen.orientation.lock('landscape').catch(() => this.toggleCssRotation());
-                } else {
-                    screen.orientation.lock('portrait').catch(() => { });
-                    this.toggleCssRotation(); // Ensure fallback is cleared
+        // Picture-in-Picture toggle
+        this.ui.hwPIP.onclick = async () => {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else if (document.pictureInPictureEnabled) {
+                    await this.ui.video.requestPictureInPicture();
                 }
-            } else {
-                // Fallback to CSS
-                this.toggleCssRotation();
+            } catch (err) {
+                console.error('PIP error:', err);
             }
         };
 
-        this.ui.hwSeek.onclick = (e) => {
-            const rect = this.ui.hwSeek.getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            this.ui.video.currentTime = pos * this.ui.video.duration;
-        };
+        // Update PIP icon on enter/exit
+        this.ui.video.addEventListener('enterpictureinpicture', () => {
+            this.ui.hwPIP.innerHTML = '<span class="material-icons-round">picture_in_picture</span>';
+        });
+        this.ui.video.addEventListener('leavepictureinpicture', () => {
+            this.ui.hwPIP.innerHTML = '<span class="material-icons-round">picture_in_picture_alt</span>';
+        });
 
-        this.ui.hwVolSlider.onclick = (e) => {
+        // Draggable volume slider
+        const updateVolume = (e) => {
             const rect = this.ui.hwVolSlider.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const vol = Math.max(0, Math.min(1, x / rect.width));
+            const vol = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+            // Update volume immediately on both video and plyr
             this.ui.video.volume = vol;
-            this.state.volume = vol;
-            localStorage.setItem('tv_volume', vol);
-            this.updateVolumeUI(vol);
-        };
-
-        // Key controls for sliders
-        const handleSliderKey = (e, callback) => {
-            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                e.stopPropagation();
-                callback(e.key === 'ArrowRight');
+            this.ui.video.muted = false;
+            if (this.plyr) {
+                this.plyr.volume = vol;
+                this.plyr.muted = false;
             }
+
+            this.state.volume = vol;
+            this.ui.hwVolFill.style.width = (vol * 100) + '%';
+
+            // Update mute icon
+            this.ui.hwMute.innerHTML = vol === 0
+                ? '<span class="material-icons-round">volume_off</span>'
+                : '<span class="material-icons-round">volume_up</span>';
         };
 
-        this.ui.hwSeek.onkeydown = (e) => {
-            handleSliderKey(e, (isRight) => {
-                this.ui.video.currentTime += isRight ? 10 : -10;
-            });
-        };
-
-        this.ui.hwVolSlider.onkeydown = (e) => {
-            handleSliderKey(e, (isRight) => {
-                let v = this.ui.video.volume;
-                v = isRight ? Math.min(1, v + 0.1) : Math.max(0, v - 0.1);
-                this.updateVolumeUI(v);
-                this.state.volume = v;
-                localStorage.setItem('tv_volume', v);
-            });
-        };
-
-        this.ui.video.addEventListener('dblclick', () => {
-            this.plyr.fullscreen.toggle();
+        this.ui.hwVolSlider.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            updateVolume(e);
+            const onMove = (e) => updateVolume(e);
+            const onUp = () => {
+                this.db.setPref('tv_volume', this.state.volume);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
         });
 
-        this.ui.video.addEventListener('timeupdate', () => {
-            const perc = (this.ui.video.currentTime / this.ui.video.duration) * 100;
-            this.ui.hwProgress.style.width = (perc || 0) + '%';
-        });
+        this.ui.video.addEventListener('dblclick', () => this.plyr.fullscreen.toggle());
 
         this.ui.video.addEventListener('play', () => {
             this.ui.hwPlay.innerHTML = '<span class="material-icons-round">pause</span>';
-            this.ui.hwPlay.classList.add('active');
         });
 
         this.ui.video.addEventListener('pause', () => {
             this.ui.hwPlay.innerHTML = '<span class="material-icons-round">play_arrow</span>';
-            this.ui.hwPlay.classList.remove('active');
         });
-    }
-
-    toggleCssRotation() {
-        const doc = document.documentElement;
-        if (doc.classList.contains('rotated-mode')) {
-            doc.classList.remove('rotated-mode');
-        } else {
-            doc.classList.add('rotated-mode');
-            if (doc.requestFullscreen) doc.requestFullscreen();
-        }
     }
 
     updateVolumeUI(v) {
         this.ui.video.volume = v;
         if (this.plyr) this.plyr.volume = v;
         if (this.ui.hwVolFill) this.ui.hwVolFill.style.width = (v * 100) + '%';
-
-        const originalTitle = this.ui.displayTitle.textContent;
-        // Don't overwrite if it's already a volume indicator to avoid flickering
-        if (!originalTitle.startsWith('[ VOL:')) {
-            this.ui.displayTitle.dataset.originalTitle = originalTitle;
-        }
-
-        this.ui.displayTitle.textContent = `[ VOL: ${Math.round(v * 100)}% ]`;
-
-        clearTimeout(this.volTimeout);
-        this.volTimeout = setTimeout(() => {
-            if (this.ui.displayTitle.textContent.startsWith('[ VOL:')) {
-                // Restore title if playing, or default
-                this.ui.displayTitle.textContent = this.ui.displayTitle.dataset.originalTitle || originalTitle;
-            }
-        }, 1000);
     }
 
     setupKeyboard() {
         window.addEventListener('keydown', (e) => {
             const isInput = document.activeElement.tagName === 'INPUT';
-            const isActiveSelect = document.activeElement.tagName === 'SELECT';
 
             if (e.key === 'Tab' || e.key === 'Escape') {
                 if (e.key === 'Tab') e.preventDefault();
-                this.ui.sidebar.classList.toggle('open');
+                this.toggleMobileSidebar();
                 return;
             }
 
-            // Spatial Navigation
-            if (document.activeElement.classList.contains('channel-item')) {
-                this.handleChannelListNav(e);
-            } else if (document.activeElement === this.ui.searchInput) {
-                this.handleSearchNav(e);
-            } else if (document.activeElement.classList.contains('hw-btn') ||
-                document.activeElement.classList.contains('hw-vol-slider-container') ||
-                document.activeElement.classList.contains('hw-progress-container')) {
-                this.handleHardwareNav(e);
-            } else if (this.ui.sidebar.contains(document.activeElement)) {
-                if (e.key === 'ArrowRight' && !isActiveSelect) {
-                    e.preventDefault();
-                    this.ui.sidebar.classList.remove('open');
-                    this.focusChannelList();
-                }
-            } else {
-                if (e.key === 'ArrowLeft' && !isInput) {
-                    this.ui.sidebar.classList.add('open');
-                    this.ui.categorySelect.focus();
-                }
-            }
-
-            // Global Shortcuts
             if (!isInput) {
                 if (e.key === '1') this.setListTab('all', document.getElementById('tab-all'));
                 else if (e.key === '2') this.setListTab('favorites', document.getElementById('tab-fav'));
                 else if (e.key === '3') this.setListTab('recents', document.getElementById('tab-recent'));
-                else if (e.key === 'h' || e.key === 'H' || e.key === '?') {
-                    if (this.ui.helpOverlay) this.ui.helpOverlay.classList.toggle('hidden');
-                } else if (e.key === 'f' || e.key === 'F') {
-                    const active = document.activeElement;
-                    if (active.classList.contains('channel-item')) {
-                        const idx = parseInt(active.dataset.index);
-                        const ch = this.state.filteredChannels[idx];
-                        if (ch) this.toggleFavoriteManual(ch.url, active.querySelector('.fav-btn'));
-                    }
-                } else if (e.key === 'm' || e.key === 'M') {
-                    this.ui.hwMute.click();
-                } else if (e.key === ' ') {
-                    e.preventDefault();
-                    this.ui.hwPlay.click();
-                }
+                else if (e.key === 'm' || e.key === 'M') this.ui.hwMute.click();
+                else if (e.key === ' ') { e.preventDefault(); this.ui.hwPlay.click(); }
+                else if (e.key === 'f' || e.key === 'F') this.ui.hwFS.click();
+                else if (e.key === 'p' || e.key === 'P') this.ui.hwPIP.click();
             }
         });
-    }
-
-    handleChannelListNav(e) {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const next = document.activeElement.nextElementSibling;
-            if (next) next.focus();
-            else this.ui.hwPlay.focus();
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const prev = document.activeElement.previousElementSibling;
-            if (prev) prev.focus();
-            else this.ui.searchInput.focus();
-        } else if (e.key === 'ArrowLeft') {
-            e.preventDefault();
-            this.ui.sidebar.classList.add('open');
-            this.ui.categorySelect.focus();
-        } else if (e.key === 'ArrowRight') {
-            e.preventDefault();
-            this.ui.hwPlay.focus();
-        }
-    }
-
-    handleSearchNav(e) {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const first = this.ui.channelList.querySelector('.channel-item');
-            if (first) first.focus();
-        } else if (e.key === 'ArrowLeft') {
-            this.ui.sidebar.classList.add('open');
-            this.ui.playlistSelect.focus();
-        }
-    }
-
-    handleHardwareNav(e) {
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            this.focusChannelList();
-        } else if (e.key === 'ArrowRight') {
-            if (document.activeElement === this.ui.hwFS) {
-                e.preventDefault();
-                this.ui.hwPlay.focus();
-            }
-        } else if (e.key === 'ArrowLeft') {
-            if (document.activeElement === this.ui.hwPlay) {
-                e.preventDefault();
-                this.ui.hwFS.focus();
-            }
-        }
-    }
-
-    focusChannelList() {
-        const items = this.ui.channelList.querySelectorAll('.channel-item');
-        if (items[this.state.selectedIndex]) items[this.state.selectedIndex].focus();
-        else if (items[0]) items[0].focus();
     }
 
     setListTab(tab, el) {
@@ -515,101 +389,45 @@ class TVApp {
         this.applyFilters();
     }
 
-    toggleConfig() {
-        const panel = document.getElementById('configPanel');
-        const icon = document.getElementById('configToggle');
-        panel.classList.toggle('collapsed');
-        icon.textContent = panel.classList.contains('collapsed') ? '[+]' : '[-]';
-    }
-
     async loadPlaylist(url) {
-        localStorage.setItem('playlist_url', url);
-
-        if (url === 'favorites') {
-            this.setListTab('favorites', document.getElementById('tab-fav'));
-            this.ui.statusText.textContent = 'LOCAL_MODE';
-            this.ui.channelList.innerHTML = '';
-            this.ui.channelCount.textContent = this.state.favorites.size;
-            this.applyFilters();
-            this.triggerStatic(500);
-            return;
-        }
-
+        this.db.setPref('playlist_url', url);
         url = url.trim() || this.DEFAULT_PLAYLIST;
 
-        // Sync dropdown
-        const option = Array.from(this.ui.playlistSelect.options).find(opt => opt.value === url);
-        if (option) this.ui.playlistSelect.value = url;
-        else this.ui.playlistSelect.value = 'manual';
-
-        this.ui.sourceInput.value = url;
-        this.ui.statusText.textContent = 'LOADING...';
+        this.ui.statusText.textContent = 'LOADING';
         this.ui.statusDot.classList.remove('error');
-        this.ui.channelList.innerHTML = '<div style="padding:20px; color:var(--terminal-muted)">&gt; FETCHING MANIFEST...</div>';
-
-        this.triggerStatic(1000);
+        this.ui.channelList.innerHTML = '<div style="padding:20px; color:var(--terminal-muted)">Loading...</div>';
 
         try {
             let text;
             try {
-                console.log(`> FETCH: Attempting direct connection to ${url}`);
                 const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP_${res.status}`);
+                if (!res.ok) throw new Error('HTTP_' + res.status);
                 text = await res.text();
-            } catch (directErr) {
-                console.warn(`> DIRECT_FETCH_FAILED: ${directErr.message}. Retrying via CORS Proxy...`);
-                this.ui.channelList.innerHTML = '<div style="padding:20px; color:var(--terminal-amber)">&gt; DIRECT_CONN_FAIL <br>&gt; REROUTING VIA PROXY...</div>';
-
+            } catch {
                 const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
                 const proxyRes = await fetch(proxyUrl);
-                if (!proxyRes.ok) throw new Error(`PROXY_HTTP_${proxyRes.status}`);
+                if (!proxyRes.ok) throw new Error('PROXY_FAIL');
                 text = await proxyRes.text();
             }
 
-            if (!text || (!text.includes('#EXTM3U') && !url.includes('.m3u8'))) {
-                throw new Error('INVALID_M3U_FORMAT');
-            }
-
-            if (url.includes('.m3u8') && !text.includes('#EXTINF')) {
-                const isCp24 = url.toLowerCase().includes('cp24');
-                const channelName = isCp24 ? 'CP24 LIVE' : 'DIRECT STREAM';
-                const logo = isCp24 ? 'https://www.cp24.com/polopoly_fs/1.4334334.1553086303!/httpImage/image.jpg_gen/derivatives/landscape_620/image.jpg' : '';
-                const category = isCp24 ? 'NEWS' : 'LIVE';
-                text = `#EXTM3U\n#EXTINF:-1 tvg-logo="${logo}" group-title="${category}",${channelName}\n${url}`;
-            }
+            if (!text || !text.includes('#EXTM3U')) throw new Error('INVALID_FORMAT');
 
             this.parsePlaylist(text);
             this.populateCategoryDropdown();
             this.applyFilters();
-
             this.ui.statusText.textContent = 'READY';
             this.ui.channelCount.textContent = this.state.channels.length;
 
         } catch (err) {
-            console.error(err);
-            this.ui.channelList.innerHTML = `
-                <div style="padding:20px; color:var(--terminal-red)">
-                    <div>> ERR_CONNECTION_FAILED</div>
-                    <div style="color:var(--terminal-muted); font-size:10px; margin-top:5px">${err.message}</div>
-                    <div style="margin-top:10px">> CHECK URL OR TRY PRESET</div>
-                    <button onclick="window.retryPlaylist()" style="background:transparent; border:1px solid var(--terminal-amber); color:var(--terminal-amber); padding:8px 16px; font-family:inherit; cursor:pointer; margin-top:15px; font-size:11px;">
-                        > RETRY_CONNECTION
-                    </button>
-                </div>`;
+            this.ui.channelList.innerHTML = `<div style="padding:20px; color:var(--terminal-red)">Error: ${err.message}</div>`;
             this.ui.statusText.textContent = 'ERROR';
             this.ui.statusDot.classList.add('error');
-
-            // Expose retry function
-            window.retryPlaylist = () => {
-                this.loadPlaylist(this.ui.sourceInput.value || this.DEFAULT_PLAYLIST);
-            };
         }
     }
 
     parsePlaylist(content) {
         this.state.channels = [];
         this.state.categories = {};
-        this.state.languages = new Set();
 
         const lines = content.split('\n');
         let current = {};
@@ -628,28 +446,18 @@ class TVApp {
                     return m ? m[1] : '';
                 };
 
-                const logo = getAttr('tvg-logo');
-                const country = getAttr('tvg-country');
-                const groupRaw = getAttr('group-title') || 'UNCATEGORIZED';
-                const language = getAttr('tvg-language') || getAttr('tvg-lang') || 'Unknown';
-
-                let category = groupRaw;
-                if (groupRaw.includes(';')) {
-                    category = groupRaw.split(';')[0].trim();
-                } else if (groupRaw.includes('|')) {
-                    category = groupRaw.split('|')[0].trim();
-                }
-
-                current = { name, category, language, groupRaw, logo, country, url: '' };
+                const category = getAttr('group-title').split(';')[0].trim() || 'Other';
+                current = {
+                    name,
+                    category,
+                    logo: getAttr('tvg-logo'),
+                    url: ''
+                };
             } else if (line.startsWith('http')) {
                 current.url = line;
                 this.state.channels.push(current);
-
-                if (current.category) {
-                    if (!this.state.categories[current.category]) this.state.categories[current.category] = 0;
-                    this.state.categories[current.category]++;
-                }
-                if (current.language) this.state.languages.add(current.language);
+                if (!this.state.categories[current.category]) this.state.categories[current.category] = 0;
+                this.state.categories[current.category]++;
                 current = {};
             }
         }
@@ -657,18 +465,11 @@ class TVApp {
 
     populateCategoryDropdown() {
         const cats = Object.keys(this.state.categories).sort();
-        this.ui.categorySelect.innerHTML = '<option value="">* ALL *</option>' +
-            cats.map(c => `<option value="${c}">${c.toUpperCase()} (${this.state.categories[c]})</option>`).join('');
-    }
-
-    triggerStatic(duration = 400) {
-        const noise = document.querySelector('.static-noise');
-        noise.classList.add('active');
-        setTimeout(() => noise.classList.remove('active'), duration);
+        this.ui.categorySelect.innerHTML = '<option value="">ALL</option>' +
+            cats.map(c => `<option value="${c}">${c} (${this.state.categories[c]})</option>`).join('');
     }
 
     applyFilters() {
-        // Special handling for favorites tab - use the new collapsible lists view
         if (this.state.activeTab === 'favorites') {
             this.renderFavoritesView();
             return;
@@ -681,297 +482,67 @@ class TVApp {
             if (this.state.activeTab === 'recents') {
                 return this.state.recents.some(r => r.url === ch.url);
             }
-
             if (category && ch.category !== category) return false;
-            if (search && !ch.name.toLowerCase().includes(search) && !ch.groupRaw.toLowerCase().includes(search)) return false;
+            if (search && !ch.name.toLowerCase().includes(search)) return false;
             return true;
         });
 
         if (this.state.activeTab === 'recents') {
             this.state.filteredChannels.sort((a, b) => {
-                const idxA = this.state.recents.findIndex(r => r.url === a.url);
-                const idxB = this.state.recents.findIndex(r => r.url === b.url);
-                return idxA - idxB;
+                return this.state.recents.findIndex(r => r.url === a.url) -
+                    this.state.recents.findIndex(r => r.url === b.url);
             });
         }
 
         this.state.renderIndex = 0;
-        this.state.selectedIndex = -1;
         this.ui.channelList.innerHTML = '';
         this.renderMoreChannels();
         this.ui.channelCount.textContent = this.state.filteredChannels.length;
 
         if (this.state.filteredChannels.length === 0) {
-            this.ui.channelList.innerHTML = '<div style="padding:20px; color:var(--terminal-muted)"> &gt; NO SIGNALS FOUND</div>';
+            this.ui.channelList.innerHTML = '<div style="padding:20px; color:var(--terminal-muted)">No channels found</div>';
         }
     }
 
     renderMoreChannels() {
-        // Don't render more channels if on favorites tab - it has its own rendering
         if (this.state.activeTab === 'favorites') return;
 
-        // Optimization: Reduce batch size to prevent long frames
-        const batchSize = 50;
         const start = this.state.renderIndex;
-        const end = Math.min(start + batchSize, this.state.filteredChannels.length);
-
+        const end = Math.min(start + 50, this.state.filteredChannels.length);
         if (start >= this.state.filteredChannels.length) return;
 
         const fragment = document.createDocumentFragment();
         for (let i = start; i < end; i++) {
             const ch = this.state.filteredChannels[i];
-            const item = this.createChannelItem(ch, i);
-
-            // Add focus handler for spatial nav
-            item.onfocus = () => {
-                this.state.selectedIndex = i;
-                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            };
-
-            fragment.appendChild(item);
+            fragment.appendChild(this.createChannelItem(ch, i));
         }
 
         this.ui.channelList.appendChild(fragment);
         this.state.renderIndex = end;
     }
 
-    selectChannel(ch, item, index) {
-        this.state.selectedIndex = index;
-        this.ui.channelList.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
-        item.classList.add('active');
-
-        // Update recents
-        this.state.recents = [{ name: ch.name, url: ch.url }, ...this.state.recents.filter(r => r.url !== ch.url)].slice(0, 10);
-        localStorage.setItem('recent_channels', JSON.stringify(this.state.recents));
-
-        this.triggerStatic(300);
-        this.playChannel(ch);
-        if (window.innerWidth <= 900) this.ui.sidebar.classList.remove('open');
-    }
-
-    toggleFavoriteManual(url, btn) {
-        this.toggleFavorite(url);
-        const isFav = this.state.favorites.has(url);
-        if (btn) {
-            btn.className = `fav-btn ${isFav ? 'active' : ''}`;
-            btn.textContent = isFav ? '★' : '☆';
-        }
-
-        // Always refresh favorites view when on favorites tab
-        if (this.state.activeTab === 'favorites') {
-            this.renderFavoritesView();
-        }
-    }
-
-    toggleFavorite(url) {
-        if (this.state.favorites.has(url)) {
-            this.state.favorites.delete(url);
-            // Also remove from all custom lists
-            Object.keys(this.state.favoriteLists).forEach(listId => {
-                const idx = this.state.favoriteLists[listId].channels.indexOf(url);
-                if (idx > -1) {
-                    this.state.favoriteLists[listId].channels.splice(idx, 1);
-                }
-            });
-            this.saveFavoriteLists();
-        } else {
-            this.state.favorites.add(url);
-        }
-        localStorage.setItem('fav_channels', JSON.stringify(Array.from(this.state.favorites)));
-    }
-
-    // ========== FAVORITES LISTS MANAGEMENT ==========
-
-    saveFavoriteLists() {
-        localStorage.setItem('fav_lists', JSON.stringify(this.state.favoriteLists));
-        localStorage.setItem('fav_lists_collapsed', JSON.stringify(this.state.favListsCollapsed));
-    }
-
-    createFavoriteList(name) {
-        const listId = 'list_' + Date.now();
-        this.state.favoriteLists[listId] = {
-            name: name,
-            channels: []
-        };
-        this.state.favListsCollapsed[listId] = false;
-        this.saveFavoriteLists();
-        return listId;
-    }
-
-    deleteFavoriteList(listId) {
-        if (this.state.favoriteLists[listId]) {
-            delete this.state.favoriteLists[listId];
-            delete this.state.favListsCollapsed[listId];
-            this.saveFavoriteLists();
-            // Reset to 'all' view if we deleted the active list
-            if (this.state.activeFavList === listId) {
-                this.state.activeFavList = 'all';
-            }
-            this.renderFavoritesView();
-        }
-    }
-
-    renameFavoriteList(listId, newName) {
-        if (this.state.favoriteLists[listId]) {
-            this.state.favoriteLists[listId].name = newName;
-            this.saveFavoriteLists();
-            this.renderFavoritesView();
-        }
-    }
-
-    addChannelToList(listId, url) {
-        if (this.state.favoriteLists[listId]) {
-            if (!this.state.favoriteLists[listId].channels.includes(url)) {
-                this.state.favoriteLists[listId].channels.push(url);
-                this.saveFavoriteLists();
-            }
-        }
-    }
-
-    removeChannelFromList(listId, url) {
-        if (this.state.favoriteLists[listId]) {
-            const idx = this.state.favoriteLists[listId].channels.indexOf(url);
-            if (idx > -1) {
-                this.state.favoriteLists[listId].channels.splice(idx, 1);
-                this.saveFavoriteLists();
-            }
-        }
-    }
-
-    toggleFavListCollapse(listId) {
-        this.state.favListsCollapsed[listId] = !this.state.favListsCollapsed[listId];
-        this.saveFavoriteLists();
-    }
-
-    showAddToListMenu(url, btn) {
-        // Remove any existing menu
-        const existing = document.querySelector('.add-to-list-menu');
-        if (existing) existing.remove();
-
-        const lists = Object.entries(this.state.favoriteLists);
-        if (lists.length === 0) {
-            // No lists, prompt to create one
-            this.promptCreateList(url);
-            return;
-        }
-
-        const menu = document.createElement('div');
-        menu.className = 'add-to-list-menu';
-        menu.innerHTML = `
-            <div class="menu-header">ADD TO LIST</div>
-            ${lists.map(([id, list]) => {
-            const isInList = list.channels.includes(url);
-            return `<div class="menu-item ${isInList ? 'in-list' : ''}" data-list-id="${id}">
-                    <span class="menu-check">${isInList ? '✓' : ''}</span>
-                    <span class="menu-name">${list.name}</span>
-                </div>`;
-        }).join('')}
-            <div class="menu-divider"></div>
-            <div class="menu-item menu-new" data-action="new">+ NEW LIST</div>
-        `;
-
-        // Position menu near the button
-        const rect = btn.getBoundingClientRect();
-        menu.style.position = 'fixed';
-        menu.style.left = `${rect.right + 5}px`;
-        menu.style.top = `${rect.top}px`;
-        menu.style.zIndex = '10000';
-
-        document.body.appendChild(menu);
-
-        // Handle clicks
-        menu.addEventListener('click', (e) => {
-            const item = e.target.closest('.menu-item');
-            if (!item) return;
-
-            if (item.dataset.action === 'new') {
-                menu.remove();
-                this.promptCreateList(url);
-            } else if (item.dataset.listId) {
-                const listId = item.dataset.listId;
-                const isInList = this.state.favoriteLists[listId].channels.includes(url);
-                if (isInList) {
-                    this.removeChannelFromList(listId, url);
-                } else {
-                    this.addChannelToList(listId, url);
-                }
-                menu.remove();
-                if (this.state.activeTab === 'favorites') {
-                    this.renderFavoritesView();
-                }
-            }
-        });
-
-        // Close on outside click
-        const closeHandler = (e) => {
-            if (!menu.contains(e.target) && e.target !== btn) {
-                menu.remove();
-                document.removeEventListener('click', closeHandler);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closeHandler), 10);
-    }
-
-    promptCreateList(preAddUrl = null) {
-        const name = prompt('Enter list name:');
-        if (name && name.trim()) {
-            const listId = this.createFavoriteList(name.trim());
-            if (preAddUrl) {
-                this.addChannelToList(listId, preAddUrl);
-            }
-            if (this.state.activeTab === 'favorites') {
-                this.renderFavoritesView();
-            }
-        }
-    }
-
-    promptDeleteList(listId) {
-        const list = this.state.favoriteLists[listId];
-        if (list && confirm(`Delete list "${list.name}"? Channels will remain in All Starred.`)) {
-            this.deleteFavoriteList(listId);
-        }
-    }
-
-    promptRenameList(listId) {
-        const list = this.state.favoriteLists[listId];
-        if (list) {
-            const newName = prompt('Enter new name:', list.name);
-            if (newName && newName.trim()) {
-                this.renameFavoriteList(listId, newName.trim());
-            }
-        }
-    }
-
     renderFavoritesView() {
         const container = this.ui.channelList;
         container.innerHTML = '';
 
-        // Header with + button
         const header = document.createElement('div');
         header.className = 'fav-lists-header';
-        header.innerHTML = `
-            <button class="fav-new-list-btn" onclick="window.createNewFavList()" title="Create New List">+ NEW LIST</button>
-        `;
+        header.innerHTML = `<button class="fav-new-list-btn" onclick="window.createNewFavList()">+ NEW LIST</button>`;
         container.appendChild(header);
 
-        // Get all favorited channels
         const favChannels = this.state.channels.filter(ch => this.state.favorites.has(ch.url));
 
-        // Render "All Starred" section (always first, not deletable)
         this.renderFavSection(container, 'all', 'ALL STARRED', favChannels, false);
 
-        // Render custom lists
-        const listIds = Object.keys(this.state.favoriteLists);
-        listIds.forEach(listId => {
-            const list = this.state.favoriteLists[listId];
+        Object.entries(this.state.favoriteLists).forEach(([id, list]) => {
             const listChannels = favChannels.filter(ch => list.channels.includes(ch.url));
-            this.renderFavSection(container, listId, list.name, listChannels, true);
+            this.renderFavSection(container, id, list.name, listChannels, true);
         });
 
         if (favChannels.length === 0) {
             const empty = document.createElement('div');
-            empty.style.cssText = 'padding: 20px; color: var(--terminal-muted); text-align: center;';
-            empty.innerHTML = '> NO FAVORITES YET<br><span style="font-size:10px;color:var(--terminal-gray)">Star a channel to add it here</span>';
+            empty.style.cssText = 'padding: 20px; color: var(--terminal-muted);';
+            empty.textContent = '> No favorites yet';
             container.appendChild(empty);
         }
 
@@ -981,103 +552,288 @@ class TVApp {
     renderFavSection(container, listId, name, channels, isDeletable) {
         const isCollapsed = this.state.favListsCollapsed[listId] || false;
 
-        // Section header
-        const sectionHeader = document.createElement('div');
-        sectionHeader.className = 'fav-section-header';
-        sectionHeader.innerHTML = `
+        const header = document.createElement('div');
+        header.className = 'fav-section-header';
+        header.innerHTML = `
             <span class="fav-section-toggle" onclick="window.toggleFavSection('${listId}')">${isCollapsed ? '▶' : '▼'}</span>
             <span class="fav-section-name" onclick="window.toggleFavSection('${listId}')">${name.toUpperCase()}</span>
             <span class="fav-section-count">(${channels.length})</span>
-            ${isDeletable ? `
-                <button class="fav-section-delete" onclick="event.stopPropagation(); window.deleteFavList('${listId}')" title="Delete List">✕</button>
-            ` : ''}
+            ${isDeletable ? `<button class="fav-section-delete" onclick="event.stopPropagation(); window.deleteFavList('${listId}')">✕</button>` : ''}
         `;
-        container.appendChild(sectionHeader);
+        container.appendChild(header);
 
-        // Section content (channels)
         if (!isCollapsed) {
             const section = document.createElement('div');
             section.className = 'fav-section-content';
-            section.dataset.listId = listId;
 
             if (channels.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'fav-section-empty';
-                empty.textContent = listId === 'all' ? '> No starred channels' : '> No channels in this list';
-                section.appendChild(empty);
+                section.innerHTML = '<div class="fav-section-empty">> Empty</div>';
             } else {
-                channels.forEach((ch, i) => {
-                    const item = this.createChannelItem(ch, i, listId);
-                    section.appendChild(item);
-                });
+                channels.forEach((ch, i) => section.appendChild(this.createChannelItem(ch, i, listId)));
             }
-
             container.appendChild(section);
         }
     }
 
     createChannelItem(ch, index, listId = null) {
         const isFav = this.state.favorites.has(ch.url);
+        const isDead = (this.state.deadChannels.get(ch.url) || 0) >= 3;
         const item = document.createElement('div');
-        item.className = 'channel-item';
-        item.dataset.index = index;
+        item.className = `channel-item${isDead ? ' dead' : ''}`;
         item.dataset.url = ch.url;
-        item.tabIndex = 7;
+        item.tabIndex = 0;
 
-        const logoHtml = ch.logo ?
-            `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'%3E%3Crect width=\\'100\\' height=\\'100\\' fill=\\'%231a1a1a\\'/%3E%3Ctext y=\\'50%25\\' x=\\'50%25\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\' fill=\\'%23333\\' font-size=\\'40\\' font-family=\\'monospace\\'%3ETV%3C/text%3E%3C/svg%3E'">` :
-            `<div class="ch-logo" style="display:flex;align-items:center;justify-content:center;color:#333;font-size:10px;">TV</div>`;
+        const logo = ch.logo
+            ? `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.style.visibility='hidden'">`
+            : `<div class="ch-logo ch-logo-placeholder"></div>`;
 
-        // Show list button only if not in "all" view
-        const listBtnHtml = listId !== 'all' && listId !== null ?
-            `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')" title="Remove from list">−</button>` :
-            '';
+        const listBtn = this.state.activeTab !== 'recents'
+            ? `<button class="add-to-list-btn" onclick="event.stopPropagation(); window.showAddToListMenu('${ch.url}', this)">☰</button>`
+            : '';
 
-        const addToListBtnHtml = this.state.activeTab === 'favorites' ?
-            `<button class="add-to-list-btn" onclick="event.stopPropagation(); window.showAddToListMenu('${ch.url}', this)" tabindex="-1" title="Add to list">☰</button>` :
-            '';
+        const removeBtn = listId && listId !== 'all'
+            ? `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')">−</button>`
+            : '';
 
         item.innerHTML = `
-            ${logoHtml}
-            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.toggleFavoriteManual('${ch.url}', this)" tabindex="-1">${isFav ? '★' : '☆'}</button>
-            ${addToListBtnHtml}
-            ${listBtnHtml}
+            ${logo}
+            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.toggleFavoriteManual('${ch.url}', this)">${isFav ? '★' : '☆'}</button>
+            ${listBtn}
+            ${removeBtn}
             <div class="channel-main">
                 <span class="ch-name">${ch.name}</span>
-                <span class="ch-group" style="margin-left:auto;">${ch.category}</span>
+                <span class="ch-group">${ch.category}</span>
             </div>
         `;
 
-        item.onclick = () => {
-            const channelIndex = this.state.channels.findIndex(c => c.url === ch.url);
-            this.selectChannel(ch, item, channelIndex);
-        };
-        item.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                const channelIndex = this.state.channels.findIndex(c => c.url === ch.url);
-                this.selectChannel(ch, item, channelIndex);
-            }
-        };
-
+        item.onclick = () => this.selectChannel(ch, item, index);
         return item;
     }
 
+    selectChannel(ch, item, index) {
+        this.state.selectedIndex = index;
+        this.ui.channelList.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+        item.classList.add('active');
+
+        // Update recents
+        this.state.recents = [{ name: ch.name, url: ch.url }, ...this.state.recents.filter(r => r.url !== ch.url)].slice(0, 10);
+        this.db.addRecent(ch);
+
+        // Save last channel
+        this.db.setPref('last_channel', ch.url);
+
+        this.playChannel(ch);
+        if (window.innerWidth <= 900) this.closeMobileSidebar();
+    }
+
+    toggleFavoriteManual(url, btn) {
+        this.toggleFavorite(url);
+        const isFav = this.state.favorites.has(url);
+        if (btn) {
+            btn.className = `fav-btn ${isFav ? 'active' : ''}`;
+            btn.textContent = isFav ? '★' : '☆';
+        }
+        if (this.state.activeTab === 'favorites') this.renderFavoritesView();
+    }
+
+    toggleFavorite(url) {
+        if (this.state.favorites.has(url)) {
+            this.state.favorites.delete(url);
+            this.db.removeFavorite(url);
+            Object.keys(this.state.favoriteLists).forEach(id => {
+                const idx = this.state.favoriteLists[id].channels.indexOf(url);
+                if (idx > -1) this.state.favoriteLists[id].channels.splice(idx, 1);
+            });
+            this.saveFavoriteLists();
+        } else {
+            this.state.favorites.add(url);
+            this.db.addFavorite(url);
+        }
+    }
+
+    saveFavoriteLists() {
+        for (const [id, list] of Object.entries(this.state.favoriteLists)) {
+            this.db.saveList(id, {
+                name: list.name,
+                channels: list.channels,
+                collapsed: this.state.favListsCollapsed[id] || false
+            });
+        }
+    }
+
+    createFavoriteList(name) {
+        const id = 'list_' + Date.now();
+        this.state.favoriteLists[id] = { name, channels: [] };
+        this.state.favListsCollapsed[id] = false;
+        this.saveFavoriteLists();
+        return id;
+    }
+
+    deleteFavoriteList(id) {
+        if (this.state.favoriteLists[id]) {
+            delete this.state.favoriteLists[id];
+            delete this.state.favListsCollapsed[id];
+            this.db.deleteList(id);
+            this.renderFavoritesView();
+        }
+    }
+
+    addChannelToList(id, url) {
+        if (this.state.favoriteLists[id] && !this.state.favoriteLists[id].channels.includes(url)) {
+            this.state.favoriteLists[id].channels.push(url);
+            this.saveFavoriteLists();
+        }
+    }
+
+    removeChannelFromList(id, url) {
+        if (this.state.favoriteLists[id]) {
+            const idx = this.state.favoriteLists[id].channels.indexOf(url);
+            if (idx > -1) {
+                this.state.favoriteLists[id].channels.splice(idx, 1);
+                this.saveFavoriteLists();
+            }
+        }
+    }
+
+    toggleFavListCollapse(id) {
+        this.state.favListsCollapsed[id] = !this.state.favListsCollapsed[id];
+        this.saveFavoriteLists();
+    }
+
+    showAddToListMenu(url, btn) {
+        document.querySelector('.add-to-list-menu')?.remove();
+
+        const lists = Object.entries(this.state.favoriteLists);
+        const menu = document.createElement('div');
+        menu.className = 'add-to-list-menu';
+        menu.innerHTML = `
+            <div class="menu-header">ADD TO LIST</div>
+            ${lists.map(([id, list]) => {
+            const isIn = list.channels.includes(url);
+            return `<div class="menu-item ${isIn ? 'in-list' : ''}" data-list-id="${id}">
+                    <span class="menu-check">${isIn ? '✓' : ''}</span>
+                    <span class="menu-name">${list.name}</span>
+                </div>`;
+        }).join('')}
+            <div class="menu-divider"></div>
+            <div class="menu-item menu-new" data-action="new">+ NEW LIST</div>
+        `;
+
+        const rect = btn.getBoundingClientRect();
+        menu.style.cssText = `position:fixed; left:${rect.right + 5}px; top:${rect.top}px; z-index:10000;`;
+        document.body.appendChild(menu);
+
+        menu.onclick = (e) => {
+            const item = e.target.closest('.menu-item');
+            if (!item) return;
+
+            if (item.dataset.action === 'new') {
+                menu.remove();
+                this.promptCreateList(url);
+            } else if (item.dataset.listId) {
+                const id = item.dataset.listId;
+                const isIn = this.state.favoriteLists[id].channels.includes(url);
+                if (isIn) this.removeChannelFromList(id, url);
+                else this.addChannelToList(id, url);
+                menu.remove();
+                if (this.state.activeTab === 'favorites') this.renderFavoritesView();
+            }
+        };
+
+        setTimeout(() => {
+            const close = (e) => {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    document.removeEventListener('click', close);
+                }
+            };
+            document.addEventListener('click', close);
+        }, 10);
+    }
+
+    promptCreateList(preAddUrl = null) {
+        this.showPopupModal({
+            title: 'NEW LIST',
+            placeholder: 'Enter list name...',
+            onConfirm: (name) => {
+                if (name?.trim()) {
+                    const id = this.createFavoriteList(name.trim());
+                    if (preAddUrl) this.addChannelToList(id, preAddUrl);
+                    if (this.state.activeTab === 'favorites') this.renderFavoritesView();
+                }
+            }
+        });
+    }
+
+    showPopupModal({ title, placeholder, defaultValue = '', onConfirm }) {
+        // Remove any existing popup
+        document.querySelector('.popup-overlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        overlay.innerHTML = `
+            <div class="popup-modal">
+                <div class="popup-header">${title}</div>
+                <div class="popup-body">
+                    <input type="text" class="popup-input" placeholder="${placeholder}" value="${defaultValue}" autofocus>
+                </div>
+                <div class="popup-actions">
+                    <button class="popup-btn" data-action="cancel">CANCEL</button>
+                    <button class="popup-btn primary" data-action="confirm">CREATE</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const input = overlay.querySelector('.popup-input');
+        const modal = overlay.querySelector('.popup-modal');
+
+        // Focus input after animation
+        setTimeout(() => input.focus(), 100);
+
+        const close = (confirmed = false) => {
+            if (confirmed && onConfirm) {
+                onConfirm(input.value);
+            }
+            overlay.remove();
+        };
+
+        // Handle button clicks
+        overlay.addEventListener('click', (e) => {
+            const action = e.target.dataset?.action;
+            if (action === 'cancel') close(false);
+            else if (action === 'confirm') close(true);
+            else if (e.target === overlay) close(false); // Click on backdrop
+        });
+
+        // Handle keyboard
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                close(true);
+            } else if (e.key === 'Escape') {
+                close(false);
+            }
+        });
+    }
+
+    promptDeleteList(id) {
+        const list = this.state.favoriteLists[id];
+        if (list && confirm(`Delete "${list.name}"?`)) {
+            this.deleteFavoriteList(id);
+        }
+    }
 
     playChannel(channel) {
         this.state.currentChannel = channel;
+        this.state.retryConfig.currentRetry = 0;
 
         this.ui.displayTitle.textContent = `[ ${channel.name.toUpperCase()} ]`;
-        // Save original title for volume UI restoration
-        this.ui.displayTitle.dataset.originalTitle = this.ui.displayTitle.textContent;
-
-        this.ui.displayInfo.innerHTML = `<span style="color:var(--terminal-muted)">GENRE:</span> ${channel.groupRaw}`;
+        this.ui.displayInfo.textContent = channel.category;
 
         this.ui.overlay.classList.remove('hidden');
-        this.ui.bootText.innerHTML = `
-            <div class="line">&gt; CONNECTING TO STREAM...</div>
-            <div class="line" style="animation-delay:0.2s">&gt; TARGET: ${channel.name}</div>
-            <div class="line" style="animation-delay:0.4s">&gt; PROTOCOL: HLS/M3U8</div>
-        `;
+        this.ui.bootText.innerHTML = `<div class="line">> Connecting...</div>`;
 
         if (this.state.hls) {
             this.state.hls.destroy();
@@ -1089,146 +845,85 @@ class TVApp {
             this.state.hls = hls;
 
             hls.attachMedia(this.ui.video);
-            hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                hls.loadSource(channel.url);
-            });
+            hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(channel.url));
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 this.ui.overlay.classList.add('hidden');
-                this.plyr.play().catch(error => {
-                    this.showAutoplayError();
-                });
+                this.db.resetChannelFails(channel.url);
+                this.state.deadChannels.delete(channel.url);
+                this.plyr.play().catch(() => this.showAutoplayPrompt());
             });
 
             hls.on(Hls.Events.ERROR, (_, data) => this.handleHlsError(data, hls));
 
-            // Stats
-            hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
-                if (data.stats) {
-                    const bitrate = Math.round(data.stats.total / (data.stats.tloaded - data.stats.trequest) * 1000 * 8 / 1024);
-                    if (document.getElementById('statBitrate')) document.getElementById('statBitrate').textContent = `${bitrate} kbps`;
-                }
-            });
-
-            hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-                if (hls.levels[data.level]) {
-                    const level = hls.levels[data.level];
-                    if (document.getElementById('statRes')) document.getElementById('statRes').textContent = `${level.width}x${level.height}`;
-                }
-            });
-
         } else if (this.ui.video.canPlayType('application/vnd.apple.mpegurl')) {
             this.ui.video.src = channel.url;
-            this.ui.video.addEventListener('loadedmetadata', () => {
+            this.ui.video.onloadedmetadata = () => {
                 this.ui.overlay.classList.add('hidden');
-                this.plyr.play().catch(error => this.showAutoplayError());
-            }, { once: true });
-            this.ui.video.addEventListener('error', () => this.showError('DECODE_ERROR'), { once: true });
+                this.plyr.play().catch(() => this.showAutoplayPrompt());
+            };
+            this.ui.video.onerror = () => this.handleChannelError();
         }
     }
 
-    handleHlsError(data, hls) {
+    async handleHlsError(data, hls) {
+        if (!data.fatal) return;
+
         const config = this.state.retryConfig;
 
-        if (data.fatal) {
-            switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                    // Use exponential backoff for network errors
-                    if (config.currentRetry < config.maxRetries) {
-                        const delay = this.calculateBackoffDelay(config.currentRetry);
-                        config.currentRetry++;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && config.currentRetry < config.maxRetries) {
+            config.currentRetry++;
+            const delay = config.baseDelay * Math.pow(2, config.currentRetry - 1);
 
-                        console.log(`> STREAM_RETRY: Attempt ${config.currentRetry}/${config.maxRetries} in ${delay}ms`);
-                        this.showRetrying(config.currentRetry, config.maxRetries, delay);
+            this.ui.bootText.innerHTML = `<div class="line">> Retry ${config.currentRetry}/${config.maxRetries}...</div>`;
 
-                        setTimeout(() => {
-                            hls.startLoad();
-                        }, delay);
-                    } else {
-                        config.currentRetry = 0;
-                        this.showError('NETWORK_ERROR', true);
-                    }
-                    break;
-
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.log('> STREAM: Recovering from media error...');
-                    hls.recoverMediaError();
-                    break;
-
-                default:
-                    config.currentRetry = 0;
-                    hls.destroy();
-                    this.showError('STREAM_OFFLINE', true);
-                    break;
-            }
+            setTimeout(() => hls.startLoad(), delay);
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+        } else {
+            hls.destroy();
+            this.handleChannelError();
         }
     }
 
-    calculateBackoffDelay(retryCount) {
-        const config = this.state.retryConfig;
-        // Exponential backoff: baseDelay * 2^retryCount with jitter
-        const exponentialDelay = config.baseDelay * Math.pow(2, retryCount);
-        const jitter = Math.random() * 500; // Add random jitter up to 500ms
-        return Math.min(exponentialDelay + jitter, config.maxDelay);
+    async handleChannelError() {
+        const channel = this.state.currentChannel;
+        if (!channel) return;
+
+        // Track failure
+        const failCount = await this.db.markChannelFailed(channel.url);
+        this.state.deadChannels.set(channel.url, failCount);
+
+        // Auto-skip to next working channel
+        this.showToast(`${channel.name} failed. Trying next...`);
+
+        const next = this.getNextWorkingChannel(channel);
+        if (next) {
+            setTimeout(() => this.playChannel(next), 500);
+        } else {
+            this.ui.bootText.innerHTML = `<div class="line" style="color:var(--terminal-red)">> No working channels found</div>`;
+        }
     }
 
-    showRetrying(attempt, maxAttempts, delay) {
-        this.ui.overlay.classList.remove('hidden');
-        this.ui.bootText.innerHTML = `
-            <div class="line" style="color:var(--terminal-amber)">> STREAM_INTERRUPTED</div>
-            <div class="line" style="animation-delay:0.2s">> RETRY_ATTEMPT: ${attempt}/${maxAttempts}</div>
-            <div class="line" style="animation-delay:0.4s">> RECONNECTING IN ${Math.round(delay / 1000)}s...</div>
-            <div class="line" style="animation-delay:0.6s; color:var(--terminal-muted)">> EXPONENTIAL_BACKOFF_ACTIVE</div>
-        `;
-        this.ui.displayTitle.textContent = '[ RECONNECTING... ]';
+    getNextWorkingChannel(current) {
+        // Find next channel in same category that isn't dead
+        const sameCategory = this.state.channels.filter(ch =>
+            ch.category === current.category &&
+            ch.url !== current.url &&
+            (this.state.deadChannels.get(ch.url) || 0) < 3
+        );
 
-        // Auto-hide overlay if stream recovers
-        setTimeout(() => {
-            if (this.ui.video.readyState >= 2 && !this.ui.video.paused) {
-                this.ui.overlay.classList.add('hidden');
-                this.state.retryConfig.currentRetry = 0;
-            }
-        }, delay + 1000);
+        if (sameCategory.length > 0) return sameCategory[0];
+
+        // Fallback: any non-dead channel
+        return this.state.channels.find(ch =>
+            ch.url !== current.url &&
+            (this.state.deadChannels.get(ch.url) || 0) < 3
+        );
     }
 
-    showError(code, allowRetry = false) {
-        this.state.retryConfig.currentRetry = 0;
-        this.ui.overlay.classList.remove('hidden');
-
-        const retryButton = allowRetry && this.state.currentChannel ? `
-            <div class="line" style="animation-delay:0.6s">
-                <button onclick="window.retryStream()" style="background:transparent; border:1px solid var(--terminal-amber); color:var(--terminal-amber); padding:8px 16px; font-family:inherit; cursor:pointer; margin-top:10px;">
-                    > RETRY_CONNECTION
-                </button>
-            </div>
-        ` : '';
-
-        this.ui.bootText.innerHTML = `
-            <div class="line error-text">> ERROR: ${code}</div>
-            <div class="line" style="animation-delay:0.2s; color:var(--terminal-muted)">> STREAM MAY BE OFFLINE OR GEO-BLOCKED</div>
-            <div class="line" style="animation-delay:0.4s; color:var(--terminal-amber)">> SELECT ANOTHER CHANNEL_</div>
-            ${retryButton}
-        `;
-        this.ui.displayTitle.textContent = '[ SIGNAL LOST ]';
-        this.ui.indicator.classList.remove('on');
-
-        // Expose retry function
-        window.retryStream = () => {
-            if (this.state.currentChannel) {
-                this.playChannel(this.state.currentChannel);
-            }
-        };
-    }
-
-    showAutoplayError() {
-        this.ui.bootText.innerHTML = `
-            <div class="line" style="color:var(--terminal-amber)">> AUTOPLAY_BLOCKED</div>
-            <div class="line" style="animation-delay:0.2s">> BROWSER_POLICY_RESTRICTION</div>
-            <div class="line" style="animation-delay:0.4s">> CLICK_SCREEN_TO_INITIALIZE</div>
-        `;
-        this.ui.overlay.classList.remove('hidden');
-
-        // Allow clicking overlay to play
+    showAutoplayPrompt() {
+        this.ui.bootText.innerHTML = `<div class="line">> Click to play</div>`;
         this.ui.overlay.onclick = () => {
             this.ui.video.play().then(() => {
                 this.ui.overlay.classList.add('hidden');

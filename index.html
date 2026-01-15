@@ -33,108 +33,90 @@
 
 <body>
 
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn">
+        <span class="material-icons-round">menu</span>
+    </button>
+
+    <!-- Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <aside class="sidebar" id="sidebar">
-        <!-- Sidebar Header with Controls -->
+        <!-- Simplified Sidebar Header -->
         <div class="sidebar-header">
             <div class="sidebar-title">
-                <button class="collapse-btn" id="collapseBtn" title="Collapse Sidebar">&laquo;</button>
+                <button class="collapse-btn" id="collapseBtn" title="Collapse">«</button>
                 <span class="system-label">HOME TV</span>
-            </div>
-            <div class="theme-switcher">
-                <select class="theme-select" id="themeSelect" title="Change Theme">
-                    <option value="green">◉ PHOSPHOR</option>
-                    <option value="amber">◉ AMBER</option>
-                    <option value="cyan">◉ CYAN</option>
-                    <option value="red">◉ MATRIX</option>
-                </select>
             </div>
         </div>
 
+        <!-- Collapsible Config -->
         <div class="system-info" onclick="toggleConfig()">
             <span class="config-label">CONFIG</span>
-            <span class="toggle-icon" id="configToggle">[+]</span>
+            <span class="toggle-icon" id="configToggle">+</span>
         </div>
 
         <div id="configPanel" class="config-panel collapsed">
-            <!-- 1. Source Selection (URL First) -->
             <div class="source-section">
                 <div class="cmd-line">
                     <span class="prompt">URL:</span>
-                    <input type="text" class="cmd-input" id="sourceInput" placeholder="https://..." tabindex="1"
-                        style="border-bottom: 1px solid var(--terminal-gray);">
-                    <button class="btn-exec" id="loadBtn" tabindex="1.1">GO</button>
+                    <input type="text" class="cmd-input" id="sourceInput" placeholder="https://..." tabindex="1">
+                    <button class="btn-exec" id="loadBtn" tabindex="2">GO</button>
                 </div>
 
                 <div class="cmd-line" style="margin-top: 8px;">
                     <span class="prompt">PRESET:</span>
-                    <select class="terminal-select" id="playlistSelect" tabindex="2" style="flex: 1;">
-                        <option value="https://iptv-org.github.io/iptv/index.m3u" selected>INDEX: WORLDWIDE (DEFAULT)
-                        </option>
-
-                        <option value="manual">!: CUSTOM_URL</option>
-                        <optgroup label="&gt; GLOBAL">
-                            <option value="https://iptv-org.github.io/iptv/index.m3u">INDEX: WORLDWIDE</option>
-                            <option value="https://iptv-org.github.io/iptv/index.language.m3u">INDEX: BY LANGUAGE
+                    <select class="terminal-select" id="playlistSelect" tabindex="3" style="flex: 1;">
+                        <option value="https://iptv-org.github.io/iptv/index.m3u" selected>WORLDWIDE</option>
+                        <option value="manual">CUSTOM URL</option>
+                        <optgroup label="CATEGORIES">
+                            <option value="https://iptv-org.github.io/iptv/categories/news.m3u">NEWS</option>
+                            <option value="https://iptv-org.github.io/iptv/categories/movies.m3u">MOVIES</option>
+                            <option value="https://iptv-org.github.io/iptv/categories/sports.m3u">SPORTS</option>
+                            <option value="https://iptv-org.github.io/iptv/categories/music.m3u">MUSIC</option>
+                            <option value="https://iptv-org.github.io/iptv/categories/entertainment.m3u">ENTERTAINMENT
                             </option>
+                            <option value="https://iptv-org.github.io/iptv/categories/kids.m3u">KIDS</option>
                         </optgroup>
-                        <optgroup label="&gt; CATEGORIES">
-                            <option value="https://iptv-org.github.io/iptv/categories/news.m3u">CAT: NEWS</option>
-                            <option value="https://iptv-org.github.io/iptv/categories/movies.m3u">CAT: MOVIES</option>
-                            <option value="https://iptv-org.github.io/iptv/categories/sports.m3u">CAT: SPORTS</option>
-                            <option value="https://iptv-org.github.io/iptv/categories/music.m3u">CAT: MUSIC</option>
-                            <option value="https://iptv-org.github.io/iptv/categories/entertainment.m3u">CAT:
-                                ENTERTAINMENT</option>
-                            <option value="https://iptv-org.github.io/iptv/categories/kids.m3u">CAT: KIDS</option>
-                            <option value="https://iptv-org.github.io/iptv/categories/documentary.m3u">CAT: DOCUMENTARY
-                            </option>
-                        </optgroup>
-                        <optgroup label="&gt; REGIONS">
-                            <option value="https://iptv-org.github.io/iptv/regions/noram.m3u">REG: NORTH AMERICA
-                            </option>
-                            <option value="https://iptv-org.github.io/iptv/regions/eur.m3u">REG: EUROPE</option>
-                            <option value="https://iptv-org.github.io/iptv/regions/asia.m3u">REG: ASIA</option>
-                            <option value="https://iptv-org.github.io/iptv/regions/latam.m3u">REG: LATIN AMERICA
-                            </option>
-                            <option value="https://iptv-org.github.io/iptv/regions/arab.m3u">REG: ARAB WORLD</option>
-                        </optgroup>
-                        <optgroup label="&gt; COUNTRIES">
-                            <option value="https://iptv-org.github.io/iptv/countries/us.m3u">LOC: USA</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/uk.m3u">LOC: UNITED KINGDOM
-                            </option>
-                            <option value="https://iptv-org.github.io/iptv/countries/ca.m3u" selected>LOC: CANADA
-                            </option>
-                            <option value="https://iptv-org.github.io/iptv/countries/in.m3u">LOC: INDIA</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/mx.m3u">LOC: MEXICO</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/br.m3u">LOC: BRAZIL</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/fr.m3u">LOC: FRANCE</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/de.m3u">LOC: GERMANY</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/it.m3u">LOC: ITALY</option>
-                            <option value="https://iptv-org.github.io/iptv/countries/es.m3u">LOC: SPAIN</option>
+                        <optgroup label="REGIONS">
+                            <option value="https://iptv-org.github.io/iptv/countries/us.m3u">USA</option>
+                            <option value="https://iptv-org.github.io/iptv/countries/ca.m3u">CANADA</option>
+                            <option value="https://iptv-org.github.io/iptv/countries/uk.m3u">UK</option>
+                            <option value="https://iptv-org.github.io/iptv/regions/eur.m3u">EUROPE</option>
+                            <option value="https://iptv-org.github.io/iptv/regions/asia.m3u">ASIA</option>
                         </optgroup>
                     </select>
                 </div>
 
                 <div class="cmd-line" style="margin-top: 8px;">
                     <span class="prompt">GENRE:</span>
-                    <select class="terminal-select" id="categorySelect" tabindex="3" style="flex: 1;">
-                        <option value="">* ALL *</option>
+                    <select class="terminal-select" id="categorySelect" tabindex="4" style="flex: 1;">
+                        <option value="">ALL</option>
                     </select>
+                </div>
+
+                <div class="cmd-line" style="margin-top: 12px; gap: 8px;">
+                    <span class="prompt">DATA:</span>
+                    <button class="btn-exec" onclick="window.exportData()" style="flex: 1;">EXPORT</button>
+                    <button class="btn-exec" onclick="window.importData()" style="flex: 1;">IMPORT</button>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
                 </div>
             </div>
         </div>
 
-        <!-- 3. Primary Navigation (Tabs) -->
+        <!-- Tabs -->
         <div class="nav-primary">
             <button class="tab active" id="tab-all" onclick="setListTab('all', this)">ALL</button>
             <button class="tab" id="tab-fav" onclick="setListTab('favorites', this)">FAV</button>
             <button class="tab" id="tab-recent" onclick="setListTab('recents', this)">RECENT</button>
         </div>
 
-        <!-- 4. Search (Above List) -->
+        <!-- Search -->
         <div class="search-section">
-            <span class="search-label">SEARCH:</span>
-            <input type="text" class="cmd-input" id="searchInput" placeholder="..." tabindex="5">
+            <input type="text" class="cmd-input" id="searchInput" placeholder="Search channels..." tabindex="5">
         </div>
 
         <div class="channel-list" id="channelList"></div>
@@ -145,17 +127,7 @@
                 <span id="statusText">READY</span>
             </div>
             <div class="status-item" style="margin-left:auto;">
-                <span id="channelCount">0</span> CHANNELS
-            </div>
-        </div>
-
-        <div id="statusDashboard" class="status-dashboard"
-            style="display: none; padding: 10px; background: rgba(0,0,0,0.8); border-top: 1px solid var(--terminal-gray); font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--terminal-green-dim);">
-            <div style="display: flex; gap: 16px;">
-                <span>RES: <b id="statRes">--</b></span>
-                <span>BITRATE: <b id="statBitrate">--</b></span>
-                <span>FPS: <b id="statFps">--</b></span>
-                <span>dropped: <b id="statDrop">0</b></span>
+                <span id="channelCount">0</span>
             </div>
         </div>
     </aside>
@@ -167,19 +139,13 @@
                 <main class="main-display">
                     <div class="display-header">
                         <span class="display-title" id="displayTitle">[ NO SIGNAL ]</span>
-                        <span class="display-info" id="displayInfo">--</span>
+                        <span class="display-info" id="displayInfo"></span>
                     </div>
 
                     <div class="terminal-overlay" id="overlay">
                         <div class="boot-text" id="bootText">
-                            <div class="line">HOME TV TERMINAL v3.0.0</div>
-                            <div class="line" style="animation-delay: 0.2s">================================</div>
-                            <div class="line" style="animation-delay: 0.4s">&gt; INITIALIZING VIDEO DECODER...</div>
-                            <div class="line" style="animation-delay: 0.6s">&gt; LOADING HLS.JS LIBRARY... OK</div>
-                            <div class="line" style="animation-delay: 0.8s">&gt; AWAITING CHANNEL SELECTION</div>
-                            <div class="line" style="animation-delay: 1s; color: var(--terminal-amber)">&gt; SELECT A
-                                CHANNEL FROM
-                                THE LIST_</div>
+                            <div class="line">HOME TV v3.1</div>
+                            <div class="line" style="animation-delay: 0.3s">> SELECT A CHANNEL_</div>
                         </div>
                     </div>
 
@@ -187,79 +153,42 @@
                         <video id="video" playsinline></video>
                     </div>
 
-                    <!-- Spatial Help Overlay -->
-                    <div id="helpOverlay" class="terminal-overlay hidden"
-                        style="z-index: 2000; background: rgba(0,0,0,0.95);" onclick="this.classList.add('hidden')">
-                        <div class="boot-text" style="font-size: 12px;">
-                            <div class="line" style="color: var(--terminal-cyan)">SYSTEM_NAVIGATION_GUIDE</div>
-                            <div class="line">==========================</div>
-                            <div class="line">&gt; ARROWS: Spatial Navigation</div>
-                            <div class="line">&gt; ENTER: Select / Toggle</div>
-                            <div class="line">&gt; SPACE: Play / Pause</div>
-                            <div class="line">&gt; [1][2][3]: Tab Shortcuts</div>
-                            <div class="line">&gt; [F]: Toggle Favorite</div>
-                            <div class="line">&gt; [M]: Mute/Unmute</div>
-                            <div class="line">&gt; [H] or [?]: Toggle Help</div>
-                            <div class="line">&gt; [TAB/ESC]: Toggle Sidebar</div>
-                            <div class="line">==========================</div>
-                            <div class="line" style="color: var(--terminal-amber)">&gt; CLICK OR PRESS ANY KEY TO CLOSE_
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Update Notification -->
                     <div id="updateNotification" class="terminal-overlay hidden"
                         style="z-index: 2001; background: rgba(0,0,0,0.9);">
                         <div class="boot-text" style="text-align: center;">
-                            <div class="line" style="color: var(--terminal-green); font-weight: bold;">SYSTEM UPDATE
-                                AVAILABLE</div>
-                            <div class="line" style="margin: 10px 0;">A new version of the terminal software has been
-                                downloaded.</div>
-                            <div class="line" style="margin-top: 20px;">
-                                <button class="hw-btn"
-                                    style="width: auto; padding: 5px 20px; font-size: 12px; font-family: inherit;"
-                                    onclick="window.applyUpdate()">
-                                    &gt; REBOOT_SYSTEM
-                                </button>
+                            <div class="line" style="color: var(--green); font-weight: bold;">UPDATE AVAILABLE
+                            </div>
+                            <div class="line" style="margin-top: 15px;">
+                                <button class="btn-exec" onclick="window.applyUpdate()">RELOAD</button>
                             </div>
                         </div>
                     </div>
                 </main>
-            </div>
-            <div class="tv-controls">
-                <div class="tv-buttons" style="width: 100%; align-items: center;">
-                    <!-- 1. Buttons (Moved to Left) -->
-                    <div class="tv-buttons control-grid">
-                        <button class="hw-btn" id="hw-play-btn" tabindex="9"><span
+
+                <!-- Controls overlay on video -->
+                <div class="tv-controls">
+                    <div class="controls-left">
+                        <button class="hw-btn" id="hw-play-btn" title="Play/Pause"><span
                                 class="material-icons-round">play_arrow</span></button>
-                        <button class="hw-btn" id="hw-mute-btn" tabindex="10"><span
+                        <button class="hw-btn" id="hw-mute-btn" title="Mute"><span
                                 class="material-icons-round">volume_up</span></button>
-                        <button class="hw-btn" id="hw-fs-btn" tabindex="12"><span
-                                class="material-icons-round">fullscreen</span></button>
-                        <button class="hw-btn" id="hw-rotate-btn" style="display: none;"><span
-                                class="material-icons-round">screen_rotation</span></button>
-                        <button class="hw-btn" id="hw-pip-btn" tabindex="13"><span
-                                class="material-icons-round">picture_in_picture_alt</span></button>
-                    </div>
-
-                    <!-- 2. Progress (Middle) - Removed Brand Name -->
-                    <div
-                        style="flex: 1; margin: 0 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                        <div class="hw-progress-container" id="hw-seek" tabindex="11" style="margin-bottom: 0;">
-                            <div class="hw-progress-bar" id="hw-progress"></div>
-                        </div>
-                    </div>
-
-                    <!-- 3. Volume (Moved to Right) -->
-                    <div class="hw-volume-dial">
-                        <div class="hw-vol-slider-container" id="hw-vol-slider" tabindex="8">
+                        <div class="hw-vol-slider-container" id="hw-vol-slider">
                             <div class="hw-vol-slider-fill" id="hw-vol-fill" style="width: 50%"></div>
                         </div>
-                        <span style="user-select:none; margin-top: 4px;">AUDIO_GAIN</span>
+                    </div>
+                    <div class="controls-right">
+                        <button class="hw-btn" id="hw-pip-btn" title="Picture-in-Picture"><span
+                                class="material-icons-round">picture_in_picture_alt</span></button>
+                        <button class="hw-btn" id="hw-fs-btn" title="Fullscreen"><span
+                                class="material-icons-round">fullscreen</span></button>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Database Module -->
+        <script src="db.js"></script>
 
         <!-- Main Application Script -->
         <script src="script.js"></script>
