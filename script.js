@@ -21,7 +21,13 @@ class TVApp {
             sidebarCollapsed: false,
             retryConfig: { maxRetries: 2, baseDelay: 1000, currentRetry: 0 },
             deadChannels: new Map(),
-            isAutoSkipping: false
+            isAutoSkipping: false,
+            runMode: false,
+            runTimer: null,
+            stallCheckTimer: null,
+            runHistory: [],
+            runHistoryIndex: -1,
+            runCheckInterval: 30000
         };
 
         this.ui = {
@@ -41,6 +47,7 @@ class TVApp {
             sidebar: document.getElementById('sidebar'),
             playlistSelect: document.getElementById('playlistSelect'),
             liveIndicator: document.getElementById('liveIndicator'),
+            liveTime: document.getElementById('liveTime'),
             hwPlay: document.getElementById('hw-play-btn'),
             hwMute: document.getElementById('hw-mute-btn'),
             hwFS: document.getElementById('hw-fs-btn'),
@@ -51,9 +58,22 @@ class TVApp {
             seekFill: document.getElementById('seek-fill'),
             collapseBtn: document.getElementById('collapseBtn'),
             updateNotification: document.getElementById('updateNotification'),
+            updateNotification: document.getElementById('updateNotification'),
             toast: document.getElementById('toast'),
+            sortSelect: document.getElementById('sortSelect'), // New reference
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
-            sidebarBackdrop: document.getElementById('sidebarBackdrop')
+            sidebarBackdrop: document.getElementById('sidebarBackdrop'),
+
+            // Run Mode
+            runBtn: document.getElementById('runBtn'),
+            runModeOverlay: document.getElementById('runModeOverlay'),
+            runHomeBtn: document.getElementById('runHomeBtn'),
+            runNextBtn: document.getElementById('runNextBtn'),
+            runPrevBtn: document.getElementById('runPrevBtn'),
+            runFavBtn: document.getElementById('runFavBtn'),
+            runTimeBtn: document.getElementById('runTimeBtn'),
+            runTimerFill: document.getElementById('runTimerFill'),
+            tvCase: document.querySelector('.tv-case')
         };
 
         this.plyr = null;
@@ -94,6 +114,7 @@ class TVApp {
         }
 
         this.registerServiceWorker();
+        this.startLiveTimeUpdater();
 
         // Global functions
         window.setListTab = (tab, el) => this.setListTab(tab, el);
@@ -105,6 +126,24 @@ class TVApp {
         window.showAddToListMenu = (url, btn) => this.showAddToListMenu(url, btn);
         window.applyUpdate = () => this.applyUpdate();
         window.removeFromFavList = (id, url) => { this.removeChannelFromList(id, url); this.renderFavoritesView(); };
+    }
+
+    startLiveTimeUpdater() {
+        const updateTime = () => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZoneName: 'short'
+            });
+            if (this.ui.liveTime) {
+                this.ui.liveTime.textContent = timeStr;
+            }
+        };
+
+        updateTime(); // Initial update
+        setInterval(updateTime, 1000); // Update every second
     }
 
     async loadStateFromDB() {
@@ -237,6 +276,7 @@ class TVApp {
         };
 
         this.ui.categorySelect.onchange = () => this.applyFilters();
+        this.ui.sortSelect.onchange = () => this.applyFilters(); // New listener
 
         this.ui.channelList.onscroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = this.ui.channelList;
@@ -256,6 +296,32 @@ class TVApp {
         if (this.ui.sidebarBackdrop) {
             this.ui.sidebarBackdrop.onclick = () => this.closeMobileSidebar();
         }
+
+        if (this.ui.runBtn) {
+            this.ui.runBtn.onclick = () => {
+                if (this.state.runMode) this.stopRunMode();
+                else this.startRunMode();
+            };
+        }
+
+        if (this.ui.runNextBtn) {
+            this.ui.runNextBtn.onclick = () => this.playRandomChannel();
+        }
+
+        if (this.ui.runPrevBtn) {
+            this.ui.runPrevBtn.onclick = () => this.playPreviousRunChannel();
+        }
+
+        if (this.ui.runFavBtn) {
+            this.ui.runFavBtn.onclick = () => {
+                const ch = this.state.currentChannel;
+                if (ch) this.toggleFavoriteManual(ch.url, null);
+            };
+        }
+
+        if (this.ui.runTimeBtn) {
+            this.ui.runTimeBtn.onclick = () => this.toggleRunInterval();
+        }
     }
 
     toggleMobileSidebar() {
@@ -268,8 +334,200 @@ class TVApp {
         this.ui.sidebarBackdrop.classList.remove('visible');
     }
 
+    toggleRunInterval() {
+        const current = this.state.runCheckInterval;
+        let next = 30000;
+        let label = '30s';
+
+        if (current === 30000) { next = 60000; label = '1m'; }
+        else if (current === 60000) { next = 300000; label = '5m'; }
+        else { next = 30000; label = '30s'; }
+
+        this.state.runCheckInterval = next;
+        this.ui.runTimeBtn.textContent = label;
+
+        // Reset timer with new interval if running
+        if (this.state.runMode) this.resetRunTimer();
+    }
+
+    startRunMode() {
+        if (this.state.runMode) return;
+        this.state.runMode = true;
+        this.state.runHistory = [];
+        this.state.runHistoryIndex = -1;
+        if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
+
+        this.ui.tvCase.classList.add('run-mode');
+        this.ui.runModeOverlay.classList.remove('hidden');
+
+        // Update Run Button Text/Style if needed, or just rely on the fact it's a toggle
+        // this.ui.runBtn.innerHTML = '🛑 STOP'; // Optional, but user asked for "graceful hide" not explicit text change, but maybe good?
+
+        // Gracefully collapse sidebar
+        if (!this.state.sidebarCollapsed) {
+            this.state.sidebarCollapsed = true;
+            this.ui.sidebar.classList.add('collapsed');
+            this.db.setPref('sidebar_collapsed', true);
+            // Update collapse button logic if needed (it handles itself mostly via class)
+        }
+
+        // Hide sidebar on mobile if open
+        this.closeMobileSidebar();
+
+        this.playRandomChannel();
+    }
+
+    stopRunMode() {
+        this.state.runMode = false;
+        this.ui.tvCase.classList.remove('run-mode');
+        this.ui.runModeOverlay.classList.add('hidden');
+
+        if (this.state.runTimer) {
+            clearTimeout(this.state.runTimer);
+            this.state.runTimer = null;
+        }
+
+        if (this.state.stallCheckTimer) {
+            clearTimeout(this.state.stallCheckTimer);
+            this.state.stallCheckTimer = null;
+        }
+
+        // Reset timer bar
+        this.ui.runTimerFill.style.transition = 'none';
+        this.ui.runTimerFill.style.width = '0%';
+    }
+
+    playRandomChannel() {
+        if (!this.state.runMode) return;
+
+        // Reset timer
+        if (this.state.runTimer) {
+            clearTimeout(this.state.runTimer);
+        }
+
+        // Get working channels
+        // Exclude dead ones (fail count >= 3)
+        const workingChannels = this.state.channels.filter(ch => {
+            const failCount = this.state.deadChannels.get(ch.url) || 0;
+            return failCount < 3;
+        });
+
+        if (workingChannels.length === 0) {
+            this.showToast('No working channels available');
+            this.stopRunMode();
+            return;
+        }
+
+        // If we were browsing history and hit next, we wipe forward history?
+        // Or do we just append a new random one if we are at the end?
+        // Behavior: If at end of history, generate random. If in middle, go to next in history?
+        // Let's implement full browser-like history: NEXT ALWAYS generates new random if at end.
+
+        if (this.state.runHistoryIndex < this.state.runHistory.length - 1) {
+            // We are in history, go forward
+            this.state.runHistoryIndex++;
+            const ch = this.state.runHistory[this.state.runHistoryIndex];
+            this.playChannel(ch); // This calls updateRunUI
+        } else {
+            // Generate NEW random
+            const r = Math.floor(Math.random() * workingChannels.length);
+            const nextCh = workingChannels[r];
+
+            // Add to history
+            this.state.runHistory.push(nextCh);
+            this.state.runHistoryIndex++;
+
+            // Limit history size to prevent memory leak over very long time? (optional, say 100)
+            if (this.state.runHistory.length > 100) {
+                this.state.runHistory.shift();
+                this.state.runHistoryIndex--;
+            }
+
+            this.state.currentChannel = nextCh;
+            this.playChannel(nextCh);
+        }
+
+        // Start timer for next switch
+        this.state.runTimer = setTimeout(() => {
+            if (this.state.runMode) this.playRandomChannel();
+        }, 30000); // 30 seconds
+
+        // Animate progress bar
+        this.ui.runTimerFill.style.transition = 'none';
+        this.ui.runTimerFill.style.width = '0%';
+        // Force reflow
+        if (!this.state.runMode || this.state.filteredChannels.length === 0) return;
+
+        let nextIndex;
+        // Simple random for now, or shuffle logic
+        do {
+            nextIndex = Math.floor(Math.random() * this.state.filteredChannels.length);
+        } while (nextIndex === this.state.selectedIndex && this.state.filteredChannels.length > 1);
+
+        const nextCh = this.state.filteredChannels[nextIndex];
+
+        // Push to history
+        this.state.runHistory = this.state.runHistory.slice(0, this.state.runHistoryIndex + 1);
+        this.state.runHistory.push(nextCh);
+        this.state.runHistoryIndex = this.state.runHistory.length - 1;
+
+        this.playChannel(nextCh);
+        this.resetRunTimer();
+    }
+
+    playPreviousRunChannel() {
+        if (!this.state.runMode) return;
+
+        if (this.state.runHistoryIndex <= 0) {
+            this.showToast('No previous channel');
+            return;
+        }
+
+        if (this.state.runTimer) clearTimeout(this.state.runTimer);
+
+        this.state.runHistoryIndex--;
+        const ch = this.state.runHistory[this.state.runHistoryIndex];
+        // Ensure we force run mode UI refresh
+        this.playChannel(ch);
+        this.resetRunTimer();
+    }
+
+    resetRunTimer() {
+        if (this.state.runTimer) clearTimeout(this.state.runTimer);
+
+        const interval = this.state.runCheckInterval;
+        this.state.runTimer = setTimeout(() => {
+            if (this.state.runMode) this.playRandomChannel();
+        }, interval);
+
+        // Animate progress bar
+        this.ui.runTimerFill.style.transition = 'none';
+        this.ui.runTimerFill.style.width = '0%';
+        // Force reflow
+        void this.ui.runTimerFill.offsetWidth;
+        this.ui.runTimerFill.style.transition = `width ${interval / 1000}s linear`;
+        this.ui.runTimerFill.style.width = '100%';
+    }
+
+    updateRunUI() {
+        if (!this.state.runMode) return;
+
+        const ch = this.state.currentChannel;
+        if (!ch) return;
+
+        const isFav = this.state.favorites.has(ch.url);
+        const icon = isFav ? 'star' : 'star_border';
+
+        this.ui.runFavBtn.innerHTML = `<span class="material-icons-round">${icon}</span>`;
+        this.ui.runFavBtn.classList.toggle('active', isFav);
+
+        // Update styling/opacity of Prev button if no history?
+        this.ui.runPrevBtn.style.opacity = this.state.runHistoryIndex > 0 ? '1' : '0.5';
+    }
+
     setupPlayer() {
-        this.plyr = new Plyr(this.ui.video, { controls: [], clickToPlay: true });
+        // Plyr removed for direct control and perfect object-fit
+        this.ui.video.controls = false;
     }
 
     setupHardwareControls() {
@@ -288,7 +546,16 @@ class TVApp {
                 : '<span class="material-icons-round">volume_up</span>';
         };
 
-        this.ui.hwFS.onclick = () => this.plyr.fullscreen.toggle();
+        this.ui.hwFS.onclick = () => {
+            const el = document.querySelector('.tv-container');
+            if (!document.fullscreenElement) {
+                el.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        };
 
         // Picture-in-Picture toggle
         this.ui.hwPIP.onclick = async () => {
@@ -316,13 +583,9 @@ class TVApp {
             const rect = this.ui.hwVolSlider.getBoundingClientRect();
             const vol = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 
-            // Update volume immediately on both video and plyr
+            // Update volume immediately on video
             this.ui.video.volume = vol;
             this.ui.video.muted = false;
-            if (this.plyr) {
-                this.plyr.volume = vol;
-                this.plyr.muted = false;
-            }
 
             this.state.volume = vol;
             this.ui.hwVolFill.style.width = (vol * 100) + '%';
@@ -393,7 +656,11 @@ class TVApp {
             this.ui.seekFill.style.width = Math.max(0, Math.min(100, pct * 100)) + '%';
         });
 
-        this.ui.video.addEventListener('dblclick', () => this.plyr.fullscreen.toggle());
+        this.ui.video.addEventListener('dblclick', () => {
+            const el = document.querySelector('.tv-container');
+            if (!document.fullscreenElement) el.requestFullscreen().catch(e => { });
+            else document.exitFullscreen();
+        });
 
         this.ui.video.addEventListener('play', () => {
             this.ui.hwPlay.innerHTML = '<span class="material-icons-round">pause</span>';
@@ -406,7 +673,6 @@ class TVApp {
 
     updateVolumeUI(v) {
         this.ui.video.volume = v;
-        if (this.plyr) this.plyr.volume = v;
         if (this.ui.hwVolFill) this.ui.hwVolFill.style.width = (v * 100) + '%';
     }
 
@@ -421,6 +687,12 @@ class TVApp {
             }
 
             if (!isInput) {
+                if (this.state.runMode) {
+                    if (e.key === 'ArrowRight') this.playRandomChannel();
+                    else if (e.key === 'ArrowLeft') this.playPreviousRunChannel();
+                    else if (e.key === 'Enter') this.toggleFavoriteManual(this.state.currentChannel?.url, null);
+                }
+
                 if (e.key === '1') this.setListTab('all', document.getElementById('tab-all'));
                 else if (e.key === '2') this.setListTab('favorites', document.getElementById('tab-fav'));
                 else if (e.key === '3') this.setListTab('recents', document.getElementById('tab-recent'));
@@ -544,6 +816,21 @@ class TVApp {
             });
         }
 
+        // Sorting Logic
+        if (this.state.activeTab === 'all') {
+            const sort = this.ui.sortSelect.value;
+            if (sort === 'alpha') {
+                this.state.filteredChannels.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sort === 'fav') {
+                this.state.filteredChannels.sort((a, b) => {
+                    const aFav = this.state.favorites.has(a.url) ? 1 : 0;
+                    const bFav = this.state.favorites.has(b.url) ? 1 : 0;
+                    if (aFav !== bFav) return bFav - aFav; // Favorites first
+                    return a.name.localeCompare(b.name); // Then alphabetical
+                });
+            }
+        }
+
         this.state.renderIndex = 0;
         this.ui.channelList.innerHTML = '';
         this.renderMoreChannels();
@@ -642,7 +929,7 @@ class TVApp {
             : '';
 
         const removeBtn = listId && listId !== 'all'
-            ? `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')">−</button>`
+            ? `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')"><span class="material-icons-round" style="font-size:14px">close</span></button>`
             : '';
 
         item.innerHTML = `
@@ -684,6 +971,9 @@ class TVApp {
             btn.textContent = isFav ? '★' : '☆';
         }
         if (this.state.activeTab === 'favorites') this.renderFavoritesView();
+
+        // Update Run Mode UI
+        if (this.state.runMode) this.updateRunUI();
     }
 
     toggleFavorite(url) {
@@ -877,6 +1167,10 @@ class TVApp {
 
     playChannel(channel) {
         this.state.currentChannel = channel;
+
+        // Update Run UI state if needed
+        if (this.state.runMode) this.updateRunUI();
+
         this.state.retryConfig.currentRetry = 0;
 
         this.ui.displayTitle.textContent = `[ ${channel.name.toUpperCase()} ]`;
@@ -888,13 +1182,41 @@ class TVApp {
         this.ui.overlay.classList.remove('hidden');
         this.ui.bootText.innerHTML = `<div class="line">> Connecting...</div>`;
 
+        if (this.state.runMode) {
+            this.ui.bootText.innerHTML = `<div class="line" style="animation:none; font-size:16px; font-weight:bold;">> ${channel.name}</div>`;
+
+            // Stall detection - check both paused state and currentTime progress
+            if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
+
+            this.state.stallCheckTimer = setTimeout(() => {
+                if (!this.state.runMode || this.state.currentChannel?.url !== channel.url) return;
+                // If paused or time hasn't advanced past 0.1s
+                const stalled = this.ui.video.paused || (this.ui.video.currentTime < 0.1);
+
+                if (stalled) {
+                    console.log('Stall detected (no progress), skipping...');
+                    this.handleChannelError();
+                }
+            }, 2000);
+        }
+
         if (this.state.hls) {
             this.state.hls.destroy();
             this.state.hls = null;
         }
 
         if (Hls.isSupported()) {
-            const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+            const hlsConfig = { enableWorker: true, lowLatencyMode: true };
+
+            // Run Mode optimization: fast fail
+            if (this.state.runMode) {
+                hlsConfig.manifestLoadingTimeOut = 2500;
+                hlsConfig.manifestLoadingMaxRetry = 0;
+                hlsConfig.levelLoadingTimeOut = 2500;
+                hlsConfig.fragLoadingTimeOut = 2500;
+            }
+
+            const hls = new Hls(hlsConfig);
             this.state.hls = hls;
 
             hls.attachMedia(this.ui.video);
@@ -904,7 +1226,12 @@ class TVApp {
                 this.ui.overlay.classList.add('hidden');
                 this.db.resetChannelFails(channel.url);
                 this.state.deadChannels.delete(channel.url);
-                this.plyr.play().catch(() => this.showAutoplayPrompt());
+                if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
+                this.ui.video.play().catch(() => {
+                    // In run mode, if autoplay fails, just skip
+                    if (this.state.runMode) this.handleChannelError();
+                    else this.showAutoplayPrompt();
+                });
             });
 
             hls.on(Hls.Events.ERROR, (_, data) => this.handleHlsError(data, hls));
@@ -913,7 +1240,8 @@ class TVApp {
             this.ui.video.src = channel.url;
             this.ui.video.onloadedmetadata = () => {
                 this.ui.overlay.classList.add('hidden');
-                this.plyr.play().catch(() => this.showAutoplayPrompt());
+                if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
+                this.ui.video.play().catch(() => this.showAutoplayPrompt());
             };
             this.ui.video.onerror = () => this.handleChannelError();
         }
@@ -921,6 +1249,13 @@ class TVApp {
 
     async handleHlsError(data, hls) {
         if (!data.fatal) return;
+
+        // Run Mode fast skip
+        if (this.state.runMode) {
+            hls.destroy();
+            this.handleChannelError();
+            return;
+        }
 
         const config = this.state.retryConfig;
 
@@ -946,6 +1281,12 @@ class TVApp {
         // Track failure
         const failCount = await this.db.markChannelFailed(channel.url);
         this.state.deadChannels.set(channel.url, failCount);
+
+        if (this.state.runMode) {
+            // Fast skip in functionality
+            this.playRandomChannel();
+            return;
+        }
 
         // Auto-skip to next working channel
         this.showToast(`${channel.name} failed. Trying next...`);

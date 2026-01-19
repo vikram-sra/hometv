@@ -48,7 +48,9 @@
         <!-- Simplified Sidebar Header -->
         <div class="sidebar-header">
             <div class="sidebar-title">
-                <button class="collapse-btn" id="collapseBtn" title="Collapse">«</button>
+                <button class="collapse-btn" id="collapseBtn" title="Collapse">
+                    <span class="material-icons-round">keyboard_double_arrow_left</span>
+                </button>
                 <span class="system-label">HOME TV</span>
             </div>
         </div>
@@ -98,6 +100,15 @@
                     </select>
                 </div>
 
+                <div class="cmd-line" style="margin-top: 8px;">
+                    <span class="prompt">SORT:</span>
+                    <select class="terminal-select" id="sortSelect" tabindex="5" style="flex: 1;">
+                        <option value="none">DEFAULT</option>
+                        <option value="alpha">A-Z</option>
+                        <option value="fav">FAVORITES</option>
+                    </select>
+                </div>
+
                 <div class="cmd-line" style="margin-top: 12px; gap: 8px;">
                     <span class="prompt">DATA:</span>
                     <button class="btn-exec" onclick="window.exportData()" style="flex: 1;">EXPORT</button>
@@ -121,6 +132,14 @@
 
         <div class="channel-list" id="channelList"></div>
 
+        <div class="run-section">
+            <button class="run-btn" id="runBtn">
+                <span class="run-icon">⚡</span>
+                <span class="run-text">RUN MODE</span>
+                <div class="run-glare"></div>
+            </button>
+        </div>
+
         <div class="status-bar">
             <div class="status-item">
                 <div class="status-dot" id="statusDot"></div>
@@ -137,16 +156,35 @@
             <div class="tv-screen-bezel">
                 <div class="static-noise"></div>
                 <main class="main-display">
-                    <div class="display-header">
+                    <div class="display-header visible" id="displayHeader">
                         <span class="display-title" id="displayTitle">[ NO SIGNAL ]</span>
-                        <span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>LIVE</span>
                         <span class="display-info" id="displayInfo"></span>
+                        <span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>LIVE</span>
+                        <span class="live-time" id="liveTime"></span>
                     </div>
 
                     <div class="terminal-overlay" id="overlay">
-                        <div class="boot-text" id="bootText">
+                        <div class="boot-text" id="bootText" style="display:none">
                             <div class="line">HOME TV v3.1</div>
                             <div class="line" style="animation-delay: 0.3s">> SELECT A CHANNEL_</div>
+                        </div>
+                    </div>
+
+                    <!-- Run Mode Overlay -->
+                    <div id="runModeOverlay" class="run-mode-overlay hidden">
+                        <div class="run-controls">
+                            <div class="run-controls-group">
+                                <button class="run-ctrl-btn time" id="runTimeBtn">30s</button>
+                                <button class="run-ctrl-btn prev" id="runPrevBtn"><span
+                                        class="material-icons-round">skip_previous</span></button>
+                                <button class="run-ctrl-btn fav" id="runFavBtn"><span
+                                        class="material-icons-round">star_border</span></button>
+                                <button class="run-ctrl-btn next" id="runNextBtn"><span
+                                        class="material-icons-round">skip_next</span></button>
+                            </div>
+                        </div>
+                        <div class="run-timer-bar">
+                            <div class="run-timer-fill" id="runTimerFill"></div>
                         </div>
                     </div>
 
@@ -154,17 +192,7 @@
                         <video id="video" playsinline></video>
                     </div>
 
-                    <!-- Update Notification -->
-                    <div id="updateNotification" class="terminal-overlay hidden"
-                        style="z-index: 2001; background: rgba(0,0,0,0.9);">
-                        <div class="boot-text" style="text-align: center;">
-                            <div class="line" style="color: var(--green); font-weight: bold;">UPDATE AVAILABLE
-                            </div>
-                            <div class="line" style="margin-top: 15px;">
-                                <button class="btn-exec" onclick="window.applyUpdate()">RELOAD</button>
-                            </div>
-                        </div>
-                    </div>
+
                 </main>
 
                 <!-- Controls overlay on video -->
