@@ -557,6 +557,9 @@ class TVApp {
             }
         };
 
+        // Fullscreen OSD auto-hide
+        this.setupFullscreenOSD();
+
         // Picture-in-Picture toggle
         this.ui.hwPIP.onclick = async () => {
             try {
@@ -674,6 +677,53 @@ class TVApp {
     updateVolumeUI(v) {
         this.ui.video.volume = v;
         if (this.ui.hwVolFill) this.ui.hwVolFill.style.width = (v * 100) + '%';
+    }
+
+    setupFullscreenOSD() {
+        const tvContainer = document.querySelector('.tv-container');
+        let hideTimeout = null;
+
+        const showControls = () => {
+            tvContainer.classList.add('show-controls');
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                if (document.fullscreenElement) {
+                    tvContainer.classList.remove('show-controls');
+                }
+            }, 3000);
+        };
+
+        // Show controls on mouse movement in fullscreen
+        tvContainer.addEventListener('mousemove', () => {
+            if (document.fullscreenElement) {
+                showControls();
+            }
+        });
+
+        // Show controls on any click in fullscreen
+        tvContainer.addEventListener('click', () => {
+            if (document.fullscreenElement) {
+                showControls();
+            }
+        });
+
+        // Show controls on touch in fullscreen
+        tvContainer.addEventListener('touchstart', () => {
+            if (document.fullscreenElement) {
+                showControls();
+            }
+        });
+
+        // Cleanup when exiting fullscreen
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                tvContainer.classList.remove('show-controls');
+                clearTimeout(hideTimeout);
+            } else {
+                // Show controls briefly when entering fullscreen
+                showControls();
+            }
+        });
     }
 
     setupKeyboard() {
@@ -925,16 +975,16 @@ class TVApp {
             : `<div class="ch-logo ch-logo-placeholder"></div>`;
 
         const listBtn = this.state.activeTab !== 'recents'
-            ? `<button class="add-to-list-btn" onclick="event.stopPropagation(); window.showAddToListMenu('${ch.url}', this)">☰</button>`
+            ? `<button class="add-to-list-btn" onclick="event.stopPropagation(); event.preventDefault(); window.showAddToListMenu('${ch.url}', this); return false;">☰</button>`
             : '';
 
         const removeBtn = listId && listId !== 'all'
-            ? `<button class="list-remove-btn" onclick="event.stopPropagation(); window.removeFromFavList('${listId}', '${ch.url}')"><span class="material-icons-round" style="font-size:14px">close</span></button>`
+            ? `<button class="list-remove-btn" onclick="event.stopPropagation(); event.preventDefault(); window.removeFromFavList('${listId}', '${ch.url}'); return false;"><span class="material-icons-round" style="font-size:14px">close</span></button>`
             : '';
 
         item.innerHTML = `
             ${logo}
-            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.toggleFavoriteManual('${ch.url}', this)">${isFav ? '★' : '☆'}</button>
+            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); event.preventDefault(); window.toggleFavoriteManual('${ch.url}', this); return false;">${isFav ? '★' : '☆'}</button>
             ${listBtn}
             ${removeBtn}
             <div class="channel-main">

@@ -62,6 +62,11 @@ body {
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Safe area support for notched devices */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
 }
 
 /* ===== SCROLLBAR ===== */
@@ -1512,7 +1517,11 @@ body {
         transform: translateX(-100%);
         z-index: 1000;
         width: 300px;
+        max-width: calc(100vw - 60px);
         box-shadow: var(--shadow-lg);
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        padding-left: env(safe-area-inset-left, 0);
     }
 
     .sidebar.open {
@@ -1522,8 +1531,8 @@ body {
     .mobile-menu-btn {
         display: flex;
         position: fixed;
-        top: 16px;
-        left: 16px;
+        top: calc(16px + env(safe-area-inset-top, 0));
+        left: calc(16px + env(safe-area-inset-left, 0));
         z-index: 200;
         background: rgba(0, 0, 0, 0.8);
         backdrop-filter: blur(8px);
@@ -1553,14 +1562,17 @@ body {
     }
 
     .display-header {
-        top: 16px;
-        left: 70px;
-        right: 16px;
+        top: calc(16px + env(safe-area-inset-top, 0));
+        left: calc(70px + env(safe-area-inset-left, 0));
+        right: calc(16px + env(safe-area-inset-right, 0));
         padding: 8px 14px;
     }
 
     .tv-controls {
         padding: 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+        padding-left: calc(16px + env(safe-area-inset-left, 0));
+        padding-right: calc(16px + env(safe-area-inset-right, 0));
         gap: 10px;
     }
 
@@ -1569,9 +1581,118 @@ body {
     }
 
     .run-controls {
-        bottom: 80px;
-        right: 16px;
+        bottom: calc(80px + env(safe-area-inset-bottom, 0));
+        right: calc(16px + env(safe-area-inset-right, 0));
     }
+
+    /* Toast notification safe area */
+    .toast {
+        bottom: calc(24px + env(safe-area-inset-bottom, 0));
+    }
+}
+
+/* ===== LANDSCAPE MODE ON PHONES ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .display-header {
+        top: calc(10px + env(safe-area-inset-top, 0));
+        left: calc(60px + env(safe-area-inset-left, 0));
+        right: calc(10px + env(safe-area-inset-right, 0));
+        padding: 6px 12px;
+    }
+
+    .display-title {
+        font-size: 11px;
+    }
+
+    .display-info {
+        font-size: 10px;
+    }
+
+    .live-indicator {
+        font-size: 8px;
+        padding: 3px 8px;
+    }
+
+    .tv-controls {
+        padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0));
+        padding-left: calc(10px + env(safe-area-inset-left, 0));
+        padding-right: calc(10px + env(safe-area-inset-right, 0));
+        gap: 8px;
+    }
+
+    .hw-btn {
+        padding: 8px;
+    }
+
+    .hw-btn .material-icons-round {
+        font-size: 18px;
+    }
+
+    .hw-vol-slider-container {
+        width: 50px;
+        height: 4px;
+    }
+
+    .seek-bar-container {
+        height: 4px;
+    }
+
+    .run-controls {
+        bottom: calc(60px + env(safe-area-inset-bottom, 0));
+        right: calc(10px + env(safe-area-inset-right, 0));
+    }
+
+    .run-controls-group {
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .run-ctrl-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .run-ctrl-btn .material-icons-round {
+        font-size: 18px;
+    }
+
+    .mobile-menu-btn {
+        top: calc(10px + env(safe-area-inset-top, 0));
+        left: calc(10px + env(safe-area-inset-left, 0));
+        padding: 8px;
+    }
+
+    .toast {
+        bottom: calc(16px + env(safe-area-inset-bottom, 0));
+        font-size: 11px;
+        padding: 10px 20px;
+    }
+}
+
+/* ===== FULLSCREEN OSD AUTO-HIDE ===== */
+.tv-container:fullscreen .display-header,
+.tv-container:-webkit-full-screen .display-header,
+.tv-container:fullscreen .tv-controls,
+.tv-container:-webkit-full-screen .tv-controls {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.tv-container:fullscreen .tv-controls,
+.tv-container:-webkit-full-screen .tv-controls {
+    transform: translateY(10px);
+}
+
+.tv-container:fullscreen.show-controls .display-header,
+.tv-container:-webkit-full-screen.show-controls .display-header,
+.tv-container:fullscreen.show-controls .tv-controls,
+.tv-container:-webkit-full-screen.show-controls .tv-controls {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 /* ===== UTILITY CLASSES ===== */
