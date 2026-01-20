@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "exportedAt": "2026-01-19T19:00:13.071Z",
+  "favorites": [
+    {
+      "url": "https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8",
+      "addedAt": 1768533920991
+    },
+    {
+      "url": "https://amagi-streams.akamaized.net/hls/live/2110961/cbctoronto/master.m3u8",
+      "addedAt": 1768533920990
+    },
+    {
+      "url": "https://amg00106-france24-france24-samsunguk-qvpp8.amagi.tv/playlist/amg00106-france24-france24-samsunguk/playlist.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://amg00793-amg00793c5-xumo-us-2664.playouts.now.amagi.tv/bbcstudios-bbctopgear8min-all/playlist.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://bcovlive-a.akamaihd.net/7f5ec16d102f4b5d92e8e27bc95ff424/us-east-1/6240731308001/playlist.m3u8",
+      "addedAt": 1768533920991
+    },
+    {
+      "url": "https://cbcrclinear-tor.akamaized.net/hls/live/2042760/CBCRCLINEAR_TOR_6/master5.m3u8",
+      "addedAt": 1768533920990
+    },
+    {
+      "url": "https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8",
+      "addedAt": 1768533920990
+    },
+    {
+      "url": "https://dash2.antik.sk/live/test_bbc_world/playlist.m3u8",
+      "addedAt": 1768533920991
+    },
+    {
+      "url": "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8",
+      "addedAt": 1768533920989
+    },
+    {
+      "url": "https://livehub-voidnet.onrender.com/cluster/streamcore/in/AAJTAK_REDIS.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://newsxott.in/hls/indianewspunjab.m3u8",
+      "addedAt": 1768533920992
+    }
+  ],
+  "lists": [
+    {
+      "id": "list_1768838135415",
+      "name": "movies",
+      "channels": [
+        "https://bcovlive-a.akamaihd.net/7f5ec16d102f4b5d92e8e27bc95ff424/us-east-1/6240731308001/playlist.m3u8"
+      ],
+      "collapsed": false
+    }
+  ],
+  "recents": [
+    {
+      "url": "http://1music.hu/1music.m3u8",
+      "name": "1Music Channel Hungary (576p)",
+      "timestamp": 1768837819474
+    },
+    {
+      "url": "https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8",
+      "name": "ABC News",
+      "timestamp": 1768837825191
+    },
+    {
+      "url": "https://amagi-streams.akamaized.net/hls/live/2110961/cbctoronto/master.m3u8",
+      "name": "CBC News Toronto (1080p) [Geo-blocked]",
+      "timestamp": 1768837975888
+    },
+    {
+      "url": "https://amg00793-amg00793c5-xumo-us-2664.playouts.now.amagi.tv/bbcstudios-bbctopgear8min-all/playlist.m3u8",
+      "name": "BBC Top Gear",
+      "timestamp": 1768837840740
+    },
+    {
+      "url": "https://bcovlive-a.akamaihd.net/7f5ec16d102f4b5d92e8e27bc95ff424/us-east-1/6240731308001/playlist.m3u8",
+      "name": "BBC America",
+      "timestamp": 1768838143003
+    },
+    {
+      "url": "https://cbcrclinear-tor.akamaized.net/hls/live/2042760/CBCRCLINEAR_TOR_6/master5.m3u8",
+      "name": "CBC Toronto (CBLT-DT) (720p) [Geo-blocked]",
+      "timestamp": 1768838361785
+    },
+    {
+      "url": "https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8",
+      "name": "CityNews Toronto (720p)",
+      "timestamp": 1768838454117
+    },
+    {
+      "url": "https://dash2.antik.sk/live/test_bbc_world/playlist.m3u8",
+      "name": "BBC News Europe",
+      "timestamp": 1768838144237
+    },
+    {
+      "url": "https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8",
+      "name": "Al Jazeera English (1080p)",
+      "timestamp": 1768837829007
+    },
+    {
+      "url": "https://livehub-voidnet.onrender.com/cluster/streamcore/in/AAJTAK_REDIS.m3u8",
+      "name": "Aaj Tak (1080p)",
+      "timestamp": 1768837969639
+    }
+  ],
+  "preferences": [
+    {
+      "key": "_migrated",
+      "value": true,
+      "migratedAt": 1768533920995
+    },
+    {
+      "key": "last_channel",
+      "value": "https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8"
+    },
+    {
+      "key": "playlist_url",
+      "value": "https://iptv-org.github.io/iptv/index.m3u"
+    },
+    {
+      "key": "sidebar_collapsed",
+      "value": false
+    },
+    {
+      "key": "tv_theme",
+      "value": "amber"
+    },
+    {
+      "key": "tv_volume",
+      "value": 1
+    },
+    {
+      "key": "view_mode",
+      "value": "list"
+    }
+  ]
+}
