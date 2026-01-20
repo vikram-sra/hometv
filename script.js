@@ -72,6 +72,10 @@ class TVApp {
             runPrevBtn: document.getElementById('runPrevBtn'),
             runFavBtn: document.getElementById('runFavBtn'),
             runTimeBtn: document.getElementById('runTimeBtn'),
+            runTimerContainer: document.getElementById('runTimerContainer'),
+            add1mBtn: document.getElementById('add1mBtn'),
+            add5mBtn: document.getElementById('add5mBtn'),
+            reset30sBtn: document.getElementById('reset30sBtn'),
             runTimerFill: document.getElementById('runTimerFill'),
             tvCase: document.querySelector('.tv-case')
         };
@@ -320,7 +324,30 @@ class TVApp {
         }
 
         if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.onclick = () => this.toggleRunInterval();
+            this.ui.runTimeBtn.onclick = () => this.toggleTimerExpansion();
+        }
+
+        if (this.ui.add1mBtn) {
+            this.ui.add1mBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.adjustRunTimer(60000);
+            };
+        }
+
+        if (this.ui.add5mBtn) {
+            this.ui.add5mBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.adjustRunTimer(300000);
+            };
+        }
+
+        if (this.ui.reset30sBtn) {
+            this.ui.reset30sBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.state.runCheckInterval = 30000;
+                this.resetRunTimer();
+                this.showToast('Reset to 30s');
+            };
         }
     }
 
@@ -334,25 +361,10 @@ class TVApp {
         this.ui.sidebarBackdrop.classList.remove('visible');
     }
 
-    toggleRunInterval() {
-        const current = this.state.runCheckInterval;
-        let next = 30000;
-        let label = '30s';
-
-        if (current === 30000) { next = 60000; label = '1m'; }
-        else if (current === 60000) { next = 300000; label = '5m'; }
-        else { next = 30000; label = '30s'; }
-
-        this.state.runCheckInterval = next;
-        this.ui.runTimeBtn.textContent = label;
-
-        // Reset timer with new interval if running
-        if (this.state.runMode) this.resetRunTimer();
-    }
-
     startRunMode() {
         if (this.state.runMode) return;
         this.state.runMode = true;
+        this.state.runCheckInterval = 30000;
         this.state.runHistory = [];
         this.state.runHistoryIndex = -1;
         if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
@@ -360,20 +372,14 @@ class TVApp {
         this.ui.tvCase.classList.add('run-mode');
         this.ui.runModeOverlay.classList.remove('hidden');
 
-        // Update Run Button Text/Style if needed, or just rely on the fact it's a toggle
-        // this.ui.runBtn.innerHTML = '🛑 STOP'; // Optional, but user asked for "graceful hide" not explicit text change, but maybe good?
-
         // Gracefully collapse sidebar
         if (!this.state.sidebarCollapsed) {
             this.state.sidebarCollapsed = true;
             this.ui.sidebar.classList.add('collapsed');
             this.db.setPref('sidebar_collapsed', true);
-            // Update collapse button logic if needed (it handles itself mostly via class)
         }
 
-        // Hide sidebar on mobile if open
         this.closeMobileSidebar();
-
         this.playRandomChannel();
     }
 
@@ -381,16 +387,14 @@ class TVApp {
         this.state.runMode = false;
         this.ui.tvCase.classList.remove('run-mode');
         this.ui.runModeOverlay.classList.add('hidden');
+        this.ui.runTimerContainer.classList.remove('expanded');
 
-        if (this.state.runTimer) {
-            clearTimeout(this.state.runTimer);
-            this.state.runTimer = null;
-        }
+        if (this.state.runTimer) clearTimeout(this.state.runTimer);
+        if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
+        if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
 
-        if (this.state.stallCheckTimer) {
-            clearTimeout(this.state.stallCheckTimer);
-            this.state.stallCheckTimer = null;
-        }
+        this.state.runTimer = null;
+        this.state.countdownInterval = null;
 
         // Reset timer bar
         this.ui.runTimerFill.style.transition = 'none';
@@ -400,13 +404,7 @@ class TVApp {
     playRandomChannel() {
         if (!this.state.runMode) return;
 
-        // Reset timer
-        if (this.state.runTimer) {
-            clearTimeout(this.state.runTimer);
-        }
-
         // Get working channels
-        // Exclude dead ones (fail count >= 3)
         const workingChannels = this.state.channels.filter(ch => {
             const failCount = this.state.deadChannels.get(ch.url) || 0;
             return failCount < 3;
@@ -418,87 +416,75 @@ class TVApp {
             return;
         }
 
-        // If we were browsing history and hit next, we wipe forward history?
-        // Or do we just append a new random one if we are at the end?
-        // Behavior: If at end of history, generate random. If in middle, go to next in history?
-        // Let's implement full browser-like history: NEXT ALWAYS generates new random if at end.
-
         if (this.state.runHistoryIndex < this.state.runHistory.length - 1) {
-            // We are in history, go forward
             this.state.runHistoryIndex++;
             const ch = this.state.runHistory[this.state.runHistoryIndex];
-            this.playChannel(ch); // This calls updateRunUI
+            this.playChannel(ch);
         } else {
-            // Generate NEW random
             const r = Math.floor(Math.random() * workingChannels.length);
             const nextCh = workingChannels[r];
-
-            // Add to history
             this.state.runHistory.push(nextCh);
             this.state.runHistoryIndex++;
-
-            // Limit history size to prevent memory leak over very long time? (optional, say 100)
             if (this.state.runHistory.length > 100) {
                 this.state.runHistory.shift();
                 this.state.runHistoryIndex--;
             }
-
             this.state.currentChannel = nextCh;
             this.playChannel(nextCh);
         }
 
-        // Start timer for next switch
-        this.state.runTimer = setTimeout(() => {
-            if (this.state.runMode) this.playRandomChannel();
-        }, 30000); // 30 seconds
-
-        // Animate progress bar
-        this.ui.runTimerFill.style.transition = 'none';
-        this.ui.runTimerFill.style.width = '0%';
-        // Force reflow
-        if (!this.state.runMode || this.state.filteredChannels.length === 0) return;
-
-        let nextIndex;
-        // Simple random for now, or shuffle logic
-        do {
-            nextIndex = Math.floor(Math.random() * this.state.filteredChannels.length);
-        } while (nextIndex === this.state.selectedIndex && this.state.filteredChannels.length > 1);
-
-        const nextCh = this.state.filteredChannels[nextIndex];
-
-        // Push to history
-        this.state.runHistory = this.state.runHistory.slice(0, this.state.runHistoryIndex + 1);
-        this.state.runHistory.push(nextCh);
-        this.state.runHistoryIndex = this.state.runHistory.length - 1;
-
-        this.playChannel(nextCh);
         this.resetRunTimer();
     }
 
     playPreviousRunChannel() {
         if (!this.state.runMode) return;
-
         if (this.state.runHistoryIndex <= 0) {
             this.showToast('No previous channel');
             return;
         }
-
-        if (this.state.runTimer) clearTimeout(this.state.runTimer);
-
         this.state.runHistoryIndex--;
         const ch = this.state.runHistory[this.state.runHistoryIndex];
-        // Ensure we force run mode UI refresh
         this.playChannel(ch);
         this.resetRunTimer();
     }
 
+    toggleTimerExpansion() {
+        if (!this.state.runMode) return;
+        const container = this.ui.runTimerContainer;
+        container.classList.toggle('expanded');
+    }
+
+    adjustRunTimer(ms) {
+        if (!this.state.runMode) return;
+
+        // Calculate remaining time
+        const now = Date.now();
+        const remaining = Math.max(0, this.state.runTimerEnd - now);
+
+        // Add new time
+        const newTotal = remaining + ms;
+        this.state.runCheckInterval = newTotal;
+        this.resetRunTimer();
+
+        this.showToast(`Added ${ms / 60000}m to timer`);
+    }
+
     resetRunTimer() {
         if (this.state.runTimer) clearTimeout(this.state.runTimer);
+        if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
 
         const interval = this.state.runCheckInterval;
+        this.state.runTimerEnd = Date.now() + interval;
+
         this.state.runTimer = setTimeout(() => {
             if (this.state.runMode) this.playRandomChannel();
         }, interval);
+
+        // Start countdown display
+        this.updateCountdownDisplay();
+        this.state.countdownInterval = setInterval(() => {
+            this.updateCountdownDisplay();
+        }, 1000);
 
         // Animate progress bar
         this.ui.runTimerFill.style.transition = 'none';
@@ -507,6 +493,32 @@ class TVApp {
         void this.ui.runTimerFill.offsetWidth;
         this.ui.runTimerFill.style.transition = `width ${interval / 1000}s linear`;
         this.ui.runTimerFill.style.width = '100%';
+    }
+
+    updateCountdownDisplay() {
+        if (!this.state.runMode || !this.state.runTimerEnd) return;
+
+        const now = Date.now();
+        const diff = Math.max(0, this.state.runTimerEnd - now);
+
+        const seconds = Math.ceil(diff / 1000);
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+
+        let display = '';
+        if (mins > 0) {
+            display = `${mins}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            display = `${secs}s`;
+        }
+
+        if (this.ui.runTimeBtn) {
+            this.ui.runTimeBtn.textContent = display;
+        }
+
+        if (diff <= 0) {
+            clearInterval(this.state.countdownInterval);
+        }
     }
 
     updateRunUI() {

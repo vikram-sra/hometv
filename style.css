@@ -1332,13 +1332,99 @@ body {
     background: rgba(0, 255, 127, 0.2);
 }
 
+.run-timer-container {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.run-timer-container.expanded {
+    gap: 8px;
+    padding-right: 8px;
+    background: rgba(0, 255, 127, 0.1);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 20px var(--accent-dim);
+}
+
 .run-ctrl-btn.time {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     width: auto;
+    min-width: 50px;
+    height: 44px;
     padding: 0 16px;
     border-radius: 22px;
     letter-spacing: 0.5px;
+    background: transparent;
+    border: none;
+    color: var(--accent-primary);
+    font-family: 'JetBrains Mono', monospace;
+    text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.run-timer-container.expanded .run-ctrl-btn.time {
+    font-size: 15px;
+    color: #fff;
+}
+
+.timer-adjust-group {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    width: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.run-timer-container.expanded .timer-adjust-group {
+    opacity: 1;
+    width: auto;
+    max-width: 200px;
+}
+
+.adjust-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.adjust-btn:hover {
+    background: var(--accent-primary);
+    color: #000;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 10px var(--accent-dim);
+}
+
+.adjust-btn:active {
+    transform: scale(0.9);
+}
+
+.adjust-btn.reset {
+    background: rgba(255, 68, 96, 0.1);
+    border-color: rgba(255, 68, 96, 0.2);
+    color: #ff4460;
+}
+
+.adjust-btn.reset:hover {
+    background: #ff4460;
+    color: #000;
+    border-color: #ff4460;
+    box-shadow: 0 0 10px rgba(255, 68, 96, 0.3);
 }
 
 .run-timer-bar {
