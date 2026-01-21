@@ -149,7 +149,6 @@ body {
 .sidebar.collapsed .nav-primary,
 .sidebar.collapsed .search-section,
 .sidebar.collapsed .status-bar,
-.sidebar.collapsed .run-section,
 .sidebar.collapsed .channel-main,
 .sidebar.collapsed .fav-btn,
 .sidebar.collapsed .add-to-list-btn,
@@ -173,6 +172,30 @@ body {
 .sidebar.collapsed .sidebar-header {
     justify-content: center;
     padding: 12px;
+}
+
+/* Collapsed Run Button */
+.sidebar.collapsed .run-section {
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.sidebar.collapsed .run-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    justify-content: center;
+}
+
+.sidebar.collapsed .run-text {
+    display: none;
+}
+
+.sidebar.collapsed .run-icon {
+    margin: 0;
+    font-size: 20px;
 }
 
 /* Sidebar Header */
@@ -1277,11 +1300,37 @@ body {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    z-index: 20;
+    z-index: 60;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.run-mode-overlay.hidden {
-    display: none;
+.tv-case:hover .run-mode-overlay,
+.tv-case.run-mode .run-mode-overlay {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Timer container is part of the flex group */
+.run-timer-container {
+    display: flex;
+}
+
+.run-timer-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(0, 255, 127, 0.15);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tv-case.timer-active .run-timer-bar {
+    opacity: 1;
 }
 
 .run-controls {
@@ -1326,10 +1375,12 @@ body {
     transform: scale(1.08);
 }
 
-.run-ctrl-btn.fav.active {
+.run-ctrl-btn.fav.active,
+.run-ctrl-btn.loop.active {
     color: var(--accent-primary);
     border-color: var(--accent-primary);
     background: rgba(0, 255, 127, 0.2);
+    box-shadow: 0 0 15px var(--accent-dim);
 }
 
 .run-timer-container {
@@ -1353,13 +1404,15 @@ body {
 }
 
 .run-ctrl-btn.time {
-    font-size: 13px;
+    font-size: 20px;
     font-weight: 700;
-    width: auto;
-    min-width: 50px;
+    width: 44px;
     height: 44px;
-    padding: 0 16px;
-    border-radius: 22px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
     letter-spacing: 0.5px;
     background: transparent;
     border: none;
@@ -1369,8 +1422,12 @@ body {
 }
 
 .run-timer-container.expanded .run-ctrl-btn.time {
+    width: auto;
+    min-width: 60px;
+    padding: 0 12px;
     font-size: 15px;
     color: #fff;
+    border-radius: 22px;
 }
 
 .timer-adjust-group {
@@ -1414,7 +1471,8 @@ body {
     transform: scale(0.9);
 }
 
-.adjust-btn.reset {
+.adjust-btn.reset,
+.adjust-btn.stop {
     background: rgba(255, 68, 96, 0.1);
     border-color: rgba(255, 68, 96, 0.2);
     color: #ff4460;

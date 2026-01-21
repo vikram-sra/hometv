@@ -27,7 +27,9 @@ class TVApp {
             stallCheckTimer: null,
             runHistory: [],
             runHistoryIndex: -1,
-            runCheckInterval: 30000
+            runCheckInterval: 30000,
+            runPaused: true,
+            currentFavList: null
         };
 
         this.ui = {
@@ -71,11 +73,13 @@ class TVApp {
             runNextBtn: document.getElementById('runNextBtn'),
             runPrevBtn: document.getElementById('runPrevBtn'),
             runFavBtn: document.getElementById('runFavBtn'),
+            runLoopBtn: document.getElementById('runLoopBtn'),
             runTimeBtn: document.getElementById('runTimeBtn'),
             runTimerContainer: document.getElementById('runTimerContainer'),
             add1mBtn: document.getElementById('add1mBtn'),
             add5mBtn: document.getElementById('add5mBtn'),
             reset30sBtn: document.getElementById('reset30sBtn'),
+            stopLoopBtn: document.getElementById('stopLoopBtn'),
             runTimerFill: document.getElementById('runTimerFill'),
             tvCase: document.querySelector('.tv-case')
         };
@@ -119,6 +123,7 @@ class TVApp {
 
         this.registerServiceWorker();
         this.startLiveTimeUpdater();
+        this.updateRunUI();
 
         // Global functions
         window.setListTab = (tab, el) => this.setListTab(tab, el);
@@ -309,11 +314,17 @@ class TVApp {
         }
 
         if (this.ui.runNextBtn) {
-            this.ui.runNextBtn.onclick = () => this.playRandomChannel();
+            this.ui.runNextBtn.onclick = () => {
+                if (this.state.runMode) this.playRandomChannel();
+                else this.playNextSequentialChannel();
+            };
         }
 
         if (this.ui.runPrevBtn) {
-            this.ui.runPrevBtn.onclick = () => this.playPreviousRunChannel();
+            this.ui.runPrevBtn.onclick = () => {
+                if (this.state.runMode) this.playPreviousRunChannel();
+                else this.playPreviousSequentialChannel();
+            };
         }
 
         if (this.ui.runFavBtn) {
@@ -324,7 +335,16 @@ class TVApp {
         }
 
         if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.onclick = () => this.toggleTimerExpansion();
+            this.ui.runTimeBtn.onclick = () => {
+                if (this.state.runPaused) {
+                    this.state.runPaused = false;
+                    this.resetRunTimer();
+                    this.ui.runTimerContainer.classList.add('expanded');
+                } else {
+                    this.ui.runTimerContainer.classList.toggle('expanded');
+                }
+                this.updateRunUI();
+            };
         }
 
         if (this.ui.add1mBtn) {
@@ -349,6 +369,26 @@ class TVApp {
                 this.showToast('Reset to 30s');
             };
         }
+
+        if (this.ui.stopLoopBtn) {
+            this.ui.stopLoopBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.state.runPaused = true;
+                this.ui.runTimerContainer.classList.remove('expanded');
+                this.stopTimerOnly();
+                this.updateRunUI();
+            };
+        }
+    }
+
+    stopTimerOnly() {
+        if (this.state.runTimer) clearTimeout(this.state.runTimer);
+        if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
+        this.state.runTimer = null;
+        this.state.countdownInterval = null;
+        this.ui.runTimerFill.style.transition = 'none';
+        this.ui.runTimerFill.style.width = '0%';
+        if (this.ui.runTimeBtn) this.ui.runTimeBtn.textContent = 'PAUSED';
     }
 
     toggleMobileSidebar() {
@@ -367,10 +407,10 @@ class TVApp {
         this.state.runCheckInterval = 30000;
         this.state.runHistory = [];
         this.state.runHistoryIndex = -1;
+        this.state.runPaused = false;
         if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
 
         this.ui.tvCase.classList.add('run-mode');
-        this.ui.runModeOverlay.classList.remove('hidden');
 
         // Gracefully collapse sidebar
         if (!this.state.sidebarCollapsed) {
@@ -381,12 +421,13 @@ class TVApp {
 
         this.closeMobileSidebar();
         this.playRandomChannel();
+        if (this.ui.runTimerContainer) this.ui.runTimerContainer.classList.add('expanded');
+        this.resetRunTimer();
     }
 
     stopRunMode() {
         this.state.runMode = false;
         this.ui.tvCase.classList.remove('run-mode');
-        this.ui.runModeOverlay.classList.add('hidden');
         this.ui.runTimerContainer.classList.remove('expanded');
 
         if (this.state.runTimer) clearTimeout(this.state.runTimer);
@@ -399,20 +440,30 @@ class TVApp {
         // Reset timer bar
         this.ui.runTimerFill.style.transition = 'none';
         this.ui.runTimerFill.style.width = '0%';
+        this.updateRunUI();
+    }
+
+    getScopedChannels() {
+        if (this.state.activeTab === 'favorites' && this.state.currentFavList && this.state.currentFavList !== 'all') {
+            const list = this.state.favoriteLists[this.state.currentFavList];
+            if (list) {
+                // Return only channels in this specific list, but respect current filter (search/category)
+                return this.state.filteredChannels.filter(ch => list.channels.includes(ch.url));
+            }
+        }
+        return this.state.filteredChannels;
     }
 
     playRandomChannel() {
-        if (!this.state.runMode) return;
-
-        // Get working channels
-        const workingChannels = this.state.channels.filter(ch => {
+        // Dynamic Scope: Use current scoped channels
+        const workingChannels = this.getScopedChannels().filter(ch => {
             const failCount = this.state.deadChannels.get(ch.url) || 0;
             return failCount < 3;
         });
 
         if (workingChannels.length === 0) {
-            this.showToast('No working channels available');
-            this.stopRunMode();
+            this.showToast('No working channels in this view');
+            if (this.state.runMode) this.stopRunMode();
             return;
         }
 
@@ -437,7 +488,6 @@ class TVApp {
     }
 
     playPreviousRunChannel() {
-        if (!this.state.runMode) return;
         if (this.state.runHistoryIndex <= 0) {
             this.showToast('No previous channel');
             return;
@@ -449,13 +499,12 @@ class TVApp {
     }
 
     toggleTimerExpansion() {
-        if (!this.state.runMode) return;
         const container = this.ui.runTimerContainer;
         container.classList.toggle('expanded');
     }
 
     adjustRunTimer(ms) {
-        if (!this.state.runMode) return;
+        if (this.state.runPaused || !this.state.runTimerEnd) return;
 
         // Calculate remaining time
         const now = Date.now();
@@ -473,11 +522,19 @@ class TVApp {
         if (this.state.runTimer) clearTimeout(this.state.runTimer);
         if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
 
+        if (this.state.runPaused) {
+            this.stopTimerOnly();
+            return;
+        }
+
         const interval = this.state.runCheckInterval;
         this.state.runTimerEnd = Date.now() + interval;
 
         this.state.runTimer = setTimeout(() => {
-            if (this.state.runMode) this.playRandomChannel();
+            if (!this.state.runPaused) {
+                if (this.state.runMode) this.playRandomChannel();
+                else this.playNextSequentialChannel();
+            }
         }, interval);
 
         // Start countdown display
@@ -495,8 +552,30 @@ class TVApp {
         this.ui.runTimerFill.style.width = '100%';
     }
 
+    playNextSequentialChannel() {
+        const scopedChannels = this.getScopedChannels();
+        if (scopedChannels.length === 0) return;
+
+        const currentIndex = scopedChannels.findIndex(ch => ch.url === this.state.currentChannel?.url);
+        const nextIndex = (currentIndex + 1) % scopedChannels.length;
+        const nextCh = scopedChannels[nextIndex];
+
+        this.playChannel(nextCh);
+    }
+
+    playPreviousSequentialChannel() {
+        const scopedChannels = this.getScopedChannels();
+        if (scopedChannels.length === 0) return;
+
+        const currentIndex = scopedChannels.findIndex(ch => ch.url === this.state.currentChannel?.url);
+        const prevIndex = currentIndex <= 0 ? scopedChannels.length - 1 : currentIndex - 1;
+        const prevCh = scopedChannels[prevIndex];
+
+        this.playChannel(prevCh);
+    }
+
     updateCountdownDisplay() {
-        if (!this.state.runMode || !this.state.runTimerEnd) return;
+        if (this.state.runPaused || !this.state.runTimerEnd) return;
 
         const now = Date.now();
         const diff = Math.max(0, this.state.runTimerEnd - now);
@@ -522,19 +601,32 @@ class TVApp {
     }
 
     updateRunUI() {
-        if (!this.state.runMode) return;
-
         const ch = this.state.currentChannel;
         if (!ch) return;
 
         const isFav = this.state.favorites.has(ch.url);
-        const icon = isFav ? 'star' : 'star_border';
+        const favIcon = isFav ? 'star' : 'star_border';
 
-        this.ui.runFavBtn.innerHTML = `<span class="material-icons-round">${icon}</span>`;
-        this.ui.runFavBtn.classList.toggle('active', isFav);
+        if (this.ui.runFavBtn) {
+            this.ui.runFavBtn.innerHTML = `<span class="material-icons-round">${favIcon}</span>`;
+            this.ui.runFavBtn.classList.toggle('active', isFav);
+        }
 
-        // Update styling/opacity of Prev button if no history?
-        this.ui.runPrevBtn.style.opacity = this.state.runHistoryIndex > 0 ? '1' : '0.5';
+        if (this.ui.runTimeBtn && this.state.runPaused) {
+            this.ui.runTimeBtn.innerHTML = `<span class="material-icons-round">timer</span>`;
+        }
+
+        if (this.ui.runPrevBtn) {
+            this.ui.runPrevBtn.style.opacity = '1';
+        }
+
+        if (this.ui.tvCase) {
+            this.ui.tvCase.classList.toggle('timer-active', !this.state.runPaused);
+        }
+
+        if (this.ui.runTimerFill) {
+            this.ui.runTimerFill.style.opacity = '1';
+        }
     }
 
     setupPlayer() {
@@ -854,22 +946,32 @@ class TVApp {
     }
 
     applyFilters() {
-        if (this.state.activeTab === 'favorites') {
-            this.renderFavoritesView();
-            return;
-        }
-
         const search = this.ui.searchInput.value.toLowerCase();
         const category = this.ui.categorySelect.value;
+        const tab = this.state.activeTab;
+
+        // Reset sub-scope when tab/filter changes, unless we are in favorites 
+        // and manually picked a list (handled in selectChannel)
+        if (tab !== 'favorites') this.state.currentFavList = null;
 
         this.state.filteredChannels = this.state.channels.filter(ch => {
-            if (this.state.activeTab === 'recents') {
-                return this.state.recents.some(r => r.url === ch.url);
+            // Tab filtering
+            if (tab === 'favorites') {
+                if (!this.state.favorites.has(ch.url)) return false;
+            } else if (tab === 'recents') {
+                if (!this.state.recents.some(r => r.url === ch.url)) return false;
             }
+
+            // Category & Search
             if (category && ch.category !== category) return false;
             if (search && !ch.name.toLowerCase().includes(search)) return false;
             return true;
         });
+
+        if (tab === 'favorites') {
+            this.renderFavoritesView();
+            return;
+        }
 
         if (this.state.activeTab === 'recents') {
             this.state.filteredChannels.sort((a, b) => {
@@ -929,7 +1031,7 @@ class TVApp {
         header.innerHTML = `<button class="fav-new-list-btn" onclick="window.createNewFavList()">+ NEW LIST</button>`;
         container.appendChild(header);
 
-        const favChannels = this.state.channels.filter(ch => this.state.favorites.has(ch.url));
+        const favChannels = this.state.filteredChannels;
 
         this.renderFavSection(container, 'all', 'ALL STARRED', favChannels, false);
 
@@ -941,7 +1043,7 @@ class TVApp {
         if (favChannels.length === 0) {
             const empty = document.createElement('div');
             empty.style.cssText = 'padding: 20px; color: var(--terminal-muted);';
-            empty.textContent = '> No favorites yet';
+            empty.textContent = '> No favorites found';
             container.appendChild(empty);
         }
 
@@ -968,7 +1070,7 @@ class TVApp {
             if (channels.length === 0) {
                 section.innerHTML = '<div class="fav-section-empty">> Empty</div>';
             } else {
-                channels.forEach((ch, i) => section.appendChild(this.createChannelItem(ch, i, listId)));
+                channels.forEach((ch, idx) => section.appendChild(this.createChannelItem(ch, idx, listId)));
             }
             container.appendChild(section);
         }
@@ -1005,12 +1107,13 @@ class TVApp {
             </div>
         `;
 
-        item.onclick = () => this.selectChannel(ch, item, index);
+        item.onclick = () => this.selectChannel(ch, item, index, listId);
         return item;
     }
 
-    selectChannel(ch, item, index) {
+    selectChannel(ch, item, index, listId = null) {
         this.state.selectedIndex = index;
+        this.state.currentFavList = listId;
         this.ui.channelList.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
         item.classList.add('active');
 
@@ -1230,8 +1333,13 @@ class TVApp {
     playChannel(channel) {
         this.state.currentChannel = channel;
 
-        // Update Run UI state if needed
-        if (this.state.runMode) this.updateRunUI();
+        // Update Overlay UI state
+        this.updateRunUI();
+
+        // If timer is unpaused, reset it for the new channel
+        if (!this.state.runPaused) {
+            this.resetRunTimer();
+        }
 
         this.state.retryConfig.currentRetry = 0;
 

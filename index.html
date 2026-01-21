@@ -171,23 +171,25 @@
                     </div>
 
                     <!-- Run Mode Overlay -->
-                    <div id="runModeOverlay" class="run-mode-overlay hidden">
+                    <div id="runModeOverlay" class="run-mode-overlay">
                         <div class="run-controls">
                             <div class="run-controls-group">
-                                <div class="run-timer-container" id="runTimerContainer">
-                                    <button class="run-ctrl-btn time" id="runTimeBtn">30s</button>
-                                    <div class="timer-adjust-group" id="timerAdjustGroup">
-                                        <button class="adjust-btn" id="add1mBtn">+1m</button>
-                                        <button class="adjust-btn" id="add5mBtn">+5m</button>
-                                        <button class="adjust-btn reset" id="reset30sBtn">RESET</button>
-                                    </div>
-                                </div>
                                 <button class="run-ctrl-btn prev" id="runPrevBtn"><span
                                         class="material-icons-round">skip_previous</span></button>
                                 <button class="run-ctrl-btn fav" id="runFavBtn"><span
                                         class="material-icons-round">star_border</span></button>
                                 <button class="run-ctrl-btn next" id="runNextBtn"><span
                                         class="material-icons-round">skip_next</span></button>
+                                <div class="run-timer-container" id="runTimerContainer">
+                                    <button class="run-ctrl-btn time" id="runTimeBtn"><span
+                                            class="material-icons-round">timer</span></button>
+                                    <div class="timer-adjust-group" id="timerAdjustGroup">
+                                        <button class="adjust-btn" id="add1mBtn">+1m</button>
+                                        <button class="adjust-btn" id="add5mBtn">+5m</button>
+                                        <button class="adjust-btn" id="reset30sBtn">RESET</button>
+                                        <button class="adjust-btn stop" id="stopLoopBtn">STOP</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="run-timer-bar">
