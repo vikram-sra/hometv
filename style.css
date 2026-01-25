@@ -960,37 +960,9 @@ body {
     background: #000;
 }
 
-/* ===== OSD / DISPLAY HEADER ===== */
-.display-header {
-    position: absolute;
-    top: max(20px, env(safe-area-inset-top, 20px));
-    left: 50%;
-    transform: translateX(-50%) translateY(-10px);
-    z-index: 1001;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    padding: 4px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    box-shadow: var(--shadow-md);
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 90%;
-    width: auto;
-}
+/* ===== OSD / DISPLAY HEADER (Moved to Dock) ===== */
+/* Display header is now integrated into the dock title row */
 
-.tv-container.show-controls .display-header {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto;
-}
-
-/* OSD visibility is controlled via .tv-container.show-controls at end of file */
 
 .channel-number {
     font-size: 9px;
@@ -1199,87 +1171,604 @@ body {
     transform: translateY(-50%) scale(1);
 }
 
-/* ===== UNIFIED CONTROL DOCK ===== */
-.run-mode-overlay {
+/* ===== SLEEK VERTICAL REMOTE (Unified & Scaled Up) ===== */
+.run-mode-overlay.remote-dock {
     position: absolute;
-    bottom: max(16px, env(safe-area-inset-bottom, 16px));
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
+    /* Center vertically with transform for dynamic height adjustment */
+    top: 50%;
+    transform: translateY(-50%);
+    left: max(16px, env(safe-area-inset-left, 16px));
     z-index: 1000;
     pointer-events: none;
     opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.3s ease;
+    cursor: grab;
+    width: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-.tv-container.show-controls .run-mode-overlay {
+.run-mode-overlay.remote-dock.dragging {
+    cursor: grabbing;
+    transition: none;
+}
+
+/* Block clicks on children while dragging */
+.run-mode-overlay.remote-dock.dragging .remote-body>* {
+    pointer-events: none;
+}
+
+.tv-container.show-controls .run-mode-overlay.remote-dock {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
     pointer-events: auto;
 }
 
-@media (max-width: 768px) {
-    .run-mode-overlay {
-        bottom: 24px;
-        width: max-content;
-        max-width: 95vw;
-        padding: 0;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .run-controls-group {
-        width: auto;
-        justify-content: center;
-        padding: 6px 16px;
-        border-radius: 40px;
-        gap: 6px;
-    }
-
-    .ctrl-divider {
-        margin: 0 1px;
-    }
-
-    .run-ctrl-btn {
-        width: 32px;
-        height: 32px;
-    }
-
-    .run-ctrl-btn span {
-        font-size: 16px;
-    }
-
-    .hw-vol-slider-container {
-        display: none;
-    }
+/* Dock Body */
+.remote-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 45px;
+    /* Scaled up from 36 */
+    background: rgba(20, 20, 24, 0.65);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    padding: 10px 4px 6px 4px;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 10px 28px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
 }
 
-/* Timer container is part of the flex group */
-.run-timer-container {
-    display: flex;
+.remote-body:hover {
+    background: rgba(25, 25, 30, 0.75);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Timer bar is now integrated into controls group */
+/* Fullscreen Overrides */
+.tv-container:fullscreen,
+.tv-container:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #000;
+}
 
-.run-controls {
-    pointer-events: auto;
+.tv-container:fullscreen .tv-case,
+.tv-container:-webkit-full-screen .tv-case {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.tv-container:fullscreen .tv-screen-bezel,
+.tv-container:-webkit-full-screen .tv-screen-bezel {
+    border-radius: 0;
+    border: none;
+}
+
+/* Header Elements - Compact Flex Layout */
+.remote-time-display {
     display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin-bottom: 2px;
+    width: 100%;
+    color: var(--accent-primary);
+    text-shadow: 0 0 8px var(--accent-dim);
+}
+
+/* JS injects styles for time font size */
+
+/* Channel Icon Wrapper (No Cube) */
+.channel-icon-glass {
+    width: auto;
+    height: auto;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    animation: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+    /* Adjust margin */
+}
+
+.remote-channel-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    margin: 0;
+    opacity: 1;
+    /* White glow to help black icons, Dark shadow for depth */
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+    pointer-events: none;
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.channel-display-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    width: 100%;
+    margin-bottom: 2px;
+    height: 48px;
+    /* Fixed height to prevent layout jumps */
+    flex-shrink: 0;
+}
+
+.remote-title {
+    font-size: 6px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 7px;
+    /* Fixed line height */
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    width: 100%;
+    height: 14px;
+    /* Exactly 2 lines */
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+
+.remote-info {
+    font-size: 6px;
+    /* Scaled */
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 2px;
+}
+
+.live-status-marker {
+    display: none;
+    margin-bottom: 5px;
+}
+
+.live-dot {
+    width: 5px;
+    height: 5px;
+    background: var(--live-red);
+    border-radius: 50%;
+    box-shadow: 0 0 5px var(--live-red);
+    animation: livePulse 2s infinite;
+}
+
+/* Nav Stack */
+.nav-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+
+/* Tools Stack */
+.tools-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 3px;
+}
+
+/* Divider */
+.remote-divider {
+    width: 20px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 3px 0;
+}
+
+/* Buttons - Scaled */
+.remote-btn {
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    /* Removed transform */
+}
+
+.remote-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+    /* No transform scale */
+}
+
+.remote-btn:active {
+    background: rgba(255, 255, 255, 0.05);
+    /* No transform */
+}
+
+.remote-btn.active {
+    color: #FFD700;
+    border-color: rgba(255, 215, 0, 0.6);
+    background: rgba(255, 215, 0, 0.15);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+    text-shadow: 0 0 5px #FFD700;
+}
+
+.remote-btn.active:hover {
+    background: rgba(255, 215, 0, 0.25);
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+}
+
+.remote-btn span {
+    font-size: 16px;
+}
+
+/* Primary Button */
+.remote-btn.primary {
+    width: 38px;
+    height: 38px;
+}
+
+.remote-btn.primary span {
+    font-size: 20px;
+}
+
+/* Small Button */
+.remote-btn.small {
+    width: 28px;
+    height: 28px;
+}
+
+.remote-btn.small span {
+    font-size: 14px;
+}
+
+/* Tiny Button (Mute) */
+.remote-btn.tiny {
+    width: 25px;
+    height: 25px;
+    background: transparent;
+    border-color: transparent;
+}
+
+.remote-btn.tiny span {
+    font-size: 14px;
+}
+
+/* Timer Button/Expand */
+.header-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 2px;
+}
+
+/* Infinity Sphere Design */
+#runTimeBtn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: #000;
+    /* Fallback */
+    border-radius: 50%;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 4px 8px rgba(0, 0, 0, 0.4),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.5),
+        inset 0 2px 6px rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
-.run-controls-group {
+/* Rotating Gradient on Pseudo-element (Y-Axis Spin) */
+#runTimeBtn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 300%;
+    /* Triple width for smooth seamless loop */
+    height: 100%;
+    background: linear-gradient(90deg,
+            #2E3192, #1BFFFF, #8A2387, #E94057, #F27121,
+            #2E3192, #1BFFFF, #8A2387, #E94057, #F27121
+            /* Repeat pattern */
+        );
+    background-size: 100% 100%;
+    animation: planetScroll 20s linear infinite;
+    will-change: transform;
+    z-index: 1;
+}
+
+#runTimeBtn:hover::before {
+    animation-duration: 3s;
+}
+
+#runTimeBtn:hover {
+    transform: scale(1.1);
+    /* Subtle grow on hover, animation continues */
+}
+
+#runTimeBtn span {
+    color: #fff;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+    font-size: 16px;
+    z-index: 2;
+    position: relative;
+    /* Static icon, no rotation */
+}
+
+@keyframes planetScroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+
+    /* Scroll half the width */
+}
+
+@keyframes sphereCounterSpin {
+    from {
+        transform: rotate(360deg);
+    }
+
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+.timer-expand-inline {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    align-items: center;
+    margin-top: 4px;
+    padding-bottom: 2px;
+    animation: slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.run-mode-overlay.timer-active .timer-expand-inline {
+    display: flex;
+}
+
+.mini-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
-    gap: 4px;
-    background: rgba(10, 10, 10, 0.85);
-    backdrop-filter: blur(25px) saturate(180%);
-    -webkit-backdrop-filter: blur(25px) saturate(180%);
-    padding: 4px 8px;
-    border-radius: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-    position: relative;
-    /* overflow: hidden removed to allow volume popup */
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
 }
+
+.mini-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.mini-btn.danger {
+    color: #ff4444;
+    border-color: rgba(255, 68, 68, 0.3);
+}
+
+.mini-btn.danger:hover {
+    background: rgba(255, 68, 68, 0.2);
+}
+
+/* Segmented Volume Slider - Scaled */
+.vol-slider-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 30px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    padding: 0;
+    margin: 4px 0;
+    transition: background 0.3s ease;
+    overflow: hidden;
+}
+
+.vol-slider-container:not(.expanded) {
+    background: transparent;
+    padding: 0;
+}
+
+.vol-segmented-track {
+    position: relative;
+    width: 10px;
+    /* Thicker track */
+    height: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0;
+    margin: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vol-slider-container.expanded .vol-segmented-track {
+    height: 100px;
+    /* Taller expanded */
+    opacity: 1;
+    margin: 8px 0 8px;
+}
+
+.vol-slider-container.expanded {
+    height: 152px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0 0 6px;
+}
+
+.vol-segmented-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(to top,
+            #00ff00 0%,
+            #00ff00 40%,
+            #ffff00 60%,
+            #ff8800 80%,
+            #ff0000 100%);
+    transition: height 0.05s linear;
+}
+
+.vol-segment-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(to bottom,
+            transparent 0px,
+            transparent 10px,
+            /* Spacing scaled */
+            rgba(0, 0, 0, 0.8) 10px,
+            rgba(0, 0, 0, 0.8) 12px);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.vol-mute-btn {
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vol-mute-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.vol-mute-btn span {
+    font-size: 16px;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+
+.dock-progress-bar {
+    width: 30px;
+    height: 2px;
+    background: rgba(0, 255, 127, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tv-case.timer-active .dock-progress-bar {
+    opacity: 1;
+}
+
+.dock-progress-fill {
+    height: 100%;
+    background: var(--accent-primary);
+    width: 0%;
+    transition: width 1s linear;
+}
+
+.remote-vol-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background: var(--accent-primary);
+    border-radius: 2px;
+    transition: width 0.1s ease;
+    box-shadow: 0 0 10px var(--accent-dim);
+}
+
+/* Timer Progress Bar */
+.remote-timer-bar {
+    position: absolute;
+    bottom: 0;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: transparent;
+    overflow: hidden;
+    border-radius: 2px;
+}
+
+.remote-timer-fill {
+    height: 100%;
+    background: var(--accent-primary);
+    width: 0%;
+    transition: width 1s linear;
+    box-shadow: 0 0 8px var(--accent-primary);
+    opacity: 0;
+}
+
+.tv-case.timer-active .remote-timer-fill {
+    opacity: 1;
+}
+
+
 
 .run-controls-group .run-timer-bar {
     position: absolute;

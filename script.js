@@ -68,13 +68,20 @@ class TVApp {
             runPrevBtn: document.getElementById('runPrevBtn'),
             runTimeBtn: document.getElementById('runTimeBtn'),
             runTimerContainer: document.getElementById('runTimerContainer'),
+            runFavBtn: document.getElementById('runFavBtn'),
             add1mBtn: document.getElementById('add1mBtn'),
             add5mBtn: document.getElementById('add5mBtn'),
             reset30sBtn: document.getElementById('reset30sBtn'),
             stopLoopBtn: document.getElementById('stopLoopBtn'),
             runTimerFill: document.getElementById('runTimerFill'),
-            volPopup: document.getElementById('volPopup'),
-            tvCase: document.querySelector('.tv-case')
+            tvCase: document.querySelector('.tv-case'),
+
+            channelIcon: document.getElementById('channelIcon'),
+            channelIconWrapper: document.getElementById('channelIconWrapper'),
+            // New Elements
+            volSegmentedTrack: document.querySelector('.vol-segmented-track'),
+            volLevelFill: document.getElementById('volLevelFill'),
+            volSliderContainer: document.getElementById('volSegmentedSlider')
         };
 
         this.plyr = null;
@@ -102,6 +109,20 @@ class TVApp {
         this.setupListeners();
         this.setupPlayer();
         this.setupHardwareControls();
+        this.setupDraggableDock();
+
+        // Volume Toggle Logic
+        if (this.ui.hwMute && this.ui.volSliderContainer) {
+            this.ui.hwMute.addEventListener('click', (e) => {
+                e.stopPropagation(); // Don't trigger other clicks
+                this.ui.volSliderContainer.classList.toggle('expanded');
+
+                // If expanding, reset hide timer if any?
+                // Ideally, auto-collapse after interaction? 
+                // For now, toggle is explicit.
+            });
+        }
+
         this.setupKeyboard();
         this.setupExportImport();
 
@@ -186,14 +207,23 @@ class TVApp {
     startLiveTimeUpdater() {
         const updateTime = () => {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZoneName: 'short'
-            });
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+
+            // Extract timezone roughly
+            const tz = now.toLocaleTimeString('en-us', { timeZoneName: 'short' }).split(' ')[2] || 'EST';
+
             if (this.ui.liveTime) {
-                this.ui.liveTime.textContent = timeStr;
+                this.ui.liveTime.innerHTML = `
+                    <div style="font-size:9px; line-height:1; font-weight:700;">${hours}:${minutes}</div>
+                    <div style="display:flex; flex-direction:column; font-size:5px; line-height:0.9; margin-top:1px; color:rgba(255,255,255,0.7);">
+                        <div>${ampm}</div>
+                        <div>${tz}</div>
+                    </div>
+                `;
             }
         };
 
@@ -386,13 +416,22 @@ class TVApp {
         if (this.ui.runTimeBtn) {
             this.ui.runTimeBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (this.ui.video.paused) this.ui.video.play();
-                if (this.state.runPaused) {
-                    this.state.runPaused = false;
-                    this.resetRunTimer();
-                    this.ui.runTimerContainer.classList.add('expanded');
+                if (this.state.timerLoop) {
+                    clearInterval(this.state.timerLoop);
+                    this.state.timerLoop = null;
+                    this.state.runPaused = true;
+                    this.ui.runTimeBtn.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
+                    this.ui.runTimerFill.style.width = '0%';
+                    if (this.ui.runModeOverlay) this.ui.runModeOverlay.classList.remove('timer-active');
+                    this.showOSD(3000);
                 } else {
-                    this.ui.runTimerContainer.classList.toggle('expanded');
+                    if (this.ui.runModeOverlay) {
+                        this.ui.runModeOverlay.classList.toggle('timer-active');
+                        // Keep visible if active
+                        if (this.ui.runModeOverlay.classList.contains('timer-active')) {
+                            this.showOSD(30000);
+                        }
+                    }
                 }
                 this.updateTimerUI();
             };
@@ -424,9 +463,19 @@ class TVApp {
             this.ui.stopLoopBtn.onclick = (e) => {
                 e.stopPropagation();
                 this.state.runPaused = true;
-                this.ui.runTimerContainer.classList.remove('expanded');
+                this.ui.runModeOverlay.classList.remove('timer-active');
                 this.stopTimerOnly();
                 this.updateTimerUI();
+            };
+        }
+
+        if (this.ui.runFavBtn) {
+            this.ui.runFavBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.showOSD();
+                if (this.state.currentChannel?.url) {
+                    this.toggleFavoriteManual(this.state.currentChannel.url, null);
+                }
             };
         }
     }
@@ -494,7 +543,14 @@ class TVApp {
     }
 
     adjustRunTimer(ms) {
-        if (this.state.runPaused) return;
+        if (this.state.runPaused) {
+            this.state.runPaused = false;
+            // Activate timer UI when starting from pause
+            if (this.ui.runModeOverlay) this.ui.runModeOverlay.classList.add('timer-active');
+
+            // Start fresh
+            this.state.runTimerEnd = Date.now();
+        }
 
         const now = Date.now();
         if (!this.state.runTimerEnd || this.state.runTimerEnd <= now) {
@@ -591,7 +647,8 @@ class TVApp {
         }
 
         if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.innerHTML = `<span class="material-icons-round" style="font-size:14px; margin-right:4px;">all_inclusive</span>${display}`;
+            this.ui.runTimeBtn.innerHTML = `<span style="font-size:10px; font-weight:700; letter-spacing:-0.5px;">${display}</span>`;
+            this.ui.runTimeBtn.classList.add('accent'); // Ensure accent color
         }
 
         if (diff <= 0) {
@@ -644,6 +701,155 @@ class TVApp {
     setupPlayer() {
         // Direct control and perfect object-fit
         this.ui.video.controls = false;
+    }
+
+    setupDraggableDock() {
+        const dock = this.ui.runModeOverlay;
+        const dockBody = dock?.querySelector('.remote-body');
+
+        if (!dock || !dockBody) return;
+
+        let isDragging = false;
+        let hasMoved = false;
+        let offsetLeft, offsetTop; // Click offset from dock's top-left
+
+        // Load saved position logic REMOVED to reset on reload
+        /*
+        const loadPosition = async () => {
+            const savedLeft = await this.db.getPref('dock_left', null);
+            const savedTop = await this.db.getPref('dock_top', null);
+
+            if (savedLeft !== null && savedTop !== null) {
+                dock.style.left = savedLeft + 'px';
+                dock.style.top = savedTop + 'px';
+            }
+        };
+        loadPosition();
+        */
+
+        const getRelativePosition = (clientX, clientY, rect) => {
+            const parentRect = dock.parentElement.getBoundingClientRect();
+            return {
+                left: clientX - parentRect.left,
+                top: clientY - parentRect.top
+            };
+        };
+
+        const constrainPosition = (left, top) => {
+            const containerRect = dock.parentElement.getBoundingClientRect();
+            const dockRect = dock.getBoundingClientRect();
+
+            const maxLeft = containerRect.width - dockRect.width;
+            const maxTop = containerRect.height - dockRect.height;
+
+            return {
+                left: Math.max(0, Math.min(left, maxLeft)),
+                top: Math.max(0, Math.min(top, maxTop))
+            };
+        };
+
+        let startX, startY;
+
+        const onStart = (e) => {
+            // Check handled by movement threshold later
+            // if (e.target.closest('button, .remote-vol-track, .vol-popover')) return;
+
+            // Don't preventDefault here to allow click events to start
+            isDragging = true;
+            hasMoved = false;
+            // dock.classList.add('dragging'); // Defer until move
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            startX = clientX;
+            startY = clientY;
+
+            const rect = dock.getBoundingClientRect();
+
+            // Calculate where we clicked inside the dock
+            offsetLeft = clientX - rect.left;
+            offsetTop = clientY - rect.top;
+
+            this.showOSD(60000); // Keep visible while dragging
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (!hasMoved) {
+                const dx = Math.abs(clientX - startX);
+                const dy = Math.abs(clientY - startY);
+                if (dx < 4 && dy < 4) return; // Threshold
+
+                hasMoved = true;
+                dock.classList.add('dragging');
+            }
+
+            e.preventDefault();
+
+            // Calculate metrics
+            const dockRect = dock.getBoundingClientRect();
+            const parentRect = dock.parentElement.getBoundingClientRect();
+
+            // Visual Top target (where we want the top edge)
+            const desiredVisualTop = (clientY - parentRect.top) - offsetTop;
+            /* Note: offsetTop was calculated as (clientY - rect.top). 
+               So (clientY - offsetTop) is rect.top (screen coords).
+               Subtract parentRect.top to get relative visual top. */
+
+            // We use transform: translateY(-50%), so style.top sets the CENTER.
+            // Center = VisualTop + Height/2
+            let centerTop = desiredVisualTop + (dockRect.height / 2);
+
+            // Constrain Center
+            // Min Center = 0 + h/2
+            // Max Center = ParentH - h + h/2 = ParentH - h/2
+            const minCenter = dockRect.height / 2;
+            const maxCenter = parentRect.height - (dockRect.height / 2);
+
+            centerTop = Math.max(minCenter, Math.min(centerTop, maxCenter));
+
+            // Left Calculation (No transform on X)
+            let newLeft = (clientX - parentRect.left) - offsetLeft;
+            const maxLeft = parentRect.width - dockRect.width;
+            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+
+            dock.style.left = newLeft + 'px';
+            dock.style.top = centerTop + 'px';
+        };
+
+        const onEnd = async () => {
+            if (!isDragging) return;
+
+            isDragging = false;
+            dock.classList.remove('dragging');
+
+            // Save position if we actually moved
+            if (hasMoved) {
+                const parentRect = dock.parentElement.getBoundingClientRect();
+                const rect = dock.getBoundingClientRect();
+
+                await this.db.setPref('dock_left', rect.left - parentRect.left);
+                await this.db.setPref('dock_top', rect.top - parentRect.top);
+            }
+
+            // Fix: Re-assert OSD visibility after drag ends so it doesn't fade
+            this.showOSD(60000);
+        };
+
+        // Mouse events on dock body
+        dockBody.addEventListener('mousedown', onStart);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+
+        // Touch events on dock body
+        dockBody.addEventListener('touchstart', onStart, { passive: false });
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
     }
 
     setupHardwareControls() {
@@ -731,37 +937,71 @@ class TVApp {
             this.ui.hwPIP.innerHTML = '<span class="material-icons-round">picture_in_picture_alt</span>';
         });
 
-        // Draggable volume slider
-        const updateVolume = (e) => {
-            const rect = this.ui.hwVolSlider.getBoundingClientRect();
-            const vol = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-
-            // Update volume immediately on video
+        // Volume Logic
+        const updateVolumeUI = (vol) => {
+            // Update volume on video
             this.ui.video.volume = vol;
             this.ui.video.muted = false;
 
             this.state.volume = vol;
-            this.ui.hwVolFill.style.width = (vol * 100) + '%';
+
+            // Update vertical bar
+            if (this.ui.volLevelFill) {
+                this.ui.volLevelFill.style.height = (vol * 100) + '%';
+            }
 
             // Update mute icon
             this.ui.hwMute.innerHTML = vol === 0
                 ? '<span class="material-icons-round">volume_off</span>'
                 : '<span class="material-icons-round">volume_up</span>';
+
+            this.db.setPref('tv_volume', vol);
         };
 
-        if (this.ui.hwVolSlider) {
-            this.ui.hwVolSlider.addEventListener('mousedown', (e) => {
+        const updateVolFromTracking = (e) => {
+            const track = this.ui.volSegmentedTrack;
+            if (!track) return;
+            const rect = track.getBoundingClientRect();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            // Vertical from bottom
+            let vol = (rect.bottom - clientY) / rect.height;
+            vol = Math.max(0, Math.min(1, vol));
+            updateVolumeUI(vol);
+        };
+
+        if (this.ui.volSegmentedTrack) {
+            const track = this.ui.volSegmentedTrack;
+
+            const startVolDrag = (e) => {
                 e.preventDefault();
-                updateVolume(e);
-                const onMove = (e) => updateVolume(e);
-                const onUp = () => {
-                    this.db.setPref('tv_volume', this.state.volume);
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
+                e.stopPropagation(); // Prevent dock dragging
+                updateVolFromTracking(e);
+
+                const move = (ev) => {
+                    ev.preventDefault(); // Prevent scroll
+                    updateVolFromTracking(ev);
                 };
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
-            });
+
+                const end = () => {
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', end);
+                    document.removeEventListener('touchmove', move);
+                    document.removeEventListener('touchend', end);
+                };
+
+                document.addEventListener('mousemove', move, { passive: false });
+                document.addEventListener('mouseup', end);
+                document.addEventListener('touchmove', move, { passive: false });
+                document.addEventListener('touchend', end);
+            };
+
+            track.addEventListener('mousedown', startVolDrag);
+            track.addEventListener('touchstart', startVolDrag, { passive: false });
+        }
+
+        // Initial UI update
+        if (this.ui.volLevelFill) {
+            this.ui.volLevelFill.style.height = (this.state.volume * 100) + '%';
         }
 
         // Draggable seek bar
@@ -835,7 +1075,7 @@ class TVApp {
 
     updateVolumeUI(v) {
         this.ui.video.volume = v;
-        if (this.ui.hwVolFill) this.ui.hwVolFill.style.width = (v * 100) + '%';
+        if (this.ui.hwVolFill) this.ui.hwVolFill.style.height = (v * 100) + '%';
     }
 
     showOSD(duration = 10000) {
@@ -844,11 +1084,11 @@ class TVApp {
         if (this.osdTimeout) clearTimeout(this.osdTimeout);
 
         this.osdTimeout = setTimeout(() => {
-            // Check if timer is expanded - if so, don't hide the dock
-            const isExpanded = this.ui.runTimerContainer?.classList.contains('expanded');
+            // Check if timer is active - if so, don't hide the dock
+            const isTimerActive = this.ui.runModeOverlay?.classList.contains('timer-active');
 
-            if (isExpanded) {
-                // Keep calling showOSD to stay visible while adjusting
+            if (isTimerActive) {
+                // Keep calling showOSD to stay visible while timer is adjusting
                 this.showOSD(duration);
                 return;
             }
@@ -859,8 +1099,8 @@ class TVApp {
 
     toggleOSD(e) {
         if (e) {
-            // If clicking a button, adjust-btn, or slider, DON'T toggle (just show)
-            const isInteractive = e.target.closest('button, .hw-vol-slider-container, .seek-bar-container, .adjust-btn');
+            // If clicking a button, slider, or mini-btn, DON'T toggle (just show)
+            const isInteractive = e.target.closest('button, .remote-vol-track, .mini-btn');
 
             if (isInteractive) {
                 this.showOSD(); // Keep it visible during interaction
@@ -1456,8 +1696,23 @@ class TVApp {
 
         this.state.retryConfig.currentRetry = 0;
 
-        this.ui.displayTitle.textContent = `[ ${channel.name.toUpperCase()} ]`;
+        const titleHtml = channel.name.toUpperCase().split(/\s+/).join('<br>');
+        this.ui.displayTitle.innerHTML = titleHtml;
         this.ui.displayInfo.textContent = channel.category;
+
+        if (this.ui.channelIcon) {
+            if (channel.logo) {
+                this.ui.channelIcon.src = channel.logo;
+                this.ui.channelIcon.style.display = 'block';
+                if (this.ui.channelIconWrapper) this.ui.channelIconWrapper.style.display = 'flex';
+            } else {
+                this.ui.channelIcon.style.display = 'none';
+                if (this.ui.channelIconWrapper) this.ui.channelIconWrapper.style.display = 'none';
+            }
+        }
+
+        // Update Remote UI (Favorites etc)
+        this.updateRunUI();
 
         // Show live indicator
         this.ui.liveIndicator.classList.add('active');

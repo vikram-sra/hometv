@@ -152,12 +152,7 @@
             <div class="tv-screen-bezel">
                 <div class="static-noise"></div>
                 <main class="main-display">
-                    <div class="display-header" id="displayHeader">
-                        <span class="display-title" id="displayTitle">[ NO SIGNAL ]</span>
-                        <span class="display-info" id="displayInfo"></span>
-                        <span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>LIVE</span>
-                        <span class="live-time" id="liveTime"></span>
-                    </div>
+
 
                     <div class="terminal-overlay" id="overlay">
                         <div class="boot-text" id="bootText" style="display:none">
@@ -166,68 +161,98 @@
                         </div>
                     </div>
 
-                    <!-- Unified Controls Dock -->
-                    <div id="runModeOverlay" class="run-mode-overlay">
-                        <div class="run-controls">
-                            <div class="run-controls-group">
-                                <!-- Loop/Timer Group -->
-                                <div class="ctrl-group">
-                                    <div class="run-timer-container" id="runTimerContainer">
-                                        <button class="run-ctrl-btn time" id="runTimeBtn"><span
-                                                class="material-icons-round">loop</span></button>
-                                        <div class="timer-adjust-group" id="timerAdjustGroup">
-                                            <button class="adjust-btn" id="add1mBtn">+1m</button>
-                                            <button class="adjust-btn" id="add5mBtn">+5m</button>
-                                            <button class="adjust-btn" id="reset30sBtn">RESET</button>
-                                            <button class="adjust-btn stop" id="stopLoopBtn">STOP</button>
-                                        </div>
-                                    </div>
+                    <!-- Sleek Unified Control Dock -->
+                    <div id="runModeOverlay" class="run-mode-overlay remote-dock">
+                        <div class="remote-body">
+                            <!-- 1. Logo & Channel Name -->
+                            <div class="channel-display-group">
+                                <div class="channel-icon-glass" id="channelIconWrapper">
+                                    <img src="" id="channelIcon" class="remote-channel-icon"
+                                        onerror="this.style.display='none'">
                                 </div>
+                                <div class="remote-title" id="displayTitle">NO<br>SIGNAL</div>
+                                <div class="remote-info" id="displayInfo"></div>
+                            </div>
 
-                                <div class="ctrl-divider"></div>
+                            <!-- 2. Time -->
+                            <div class="remote-time-display" id="liveTime"></div>
 
-                                <!-- Navigation Group -->
-                                <div class="ctrl-group">
-                                    <button class="run-ctrl-btn prev" id="runPrevBtn"><span
-                                            class="material-icons-round">skip_previous</span></button>
-                                    <button class="run-ctrl-btn play" id="hw-play-btn"><span
-                                            class="material-icons-round">play_arrow</span></button>
-                                    <button class="run-ctrl-btn next" id="runNextBtn"><span
-                                            class="material-icons-round">skip_next</span></button>
-                                </div>
+                            <!-- Live Status -->
+                            <div class="live-status-marker" id="liveIndicator">
+                                <div class="live-dot"></div>
+                            </div>
 
-                                <div class="ctrl-divider"></div>
-
-                                <!-- Content Group -->
-                                <div class="ctrl-group">
-                                    <button class="run-ctrl-btn fav" id="runFavBtn"><span
-                                            class="material-icons-round">star_border</span></button>
-                                    <div class="vol-control-wrapper">
-                                        <button class="run-ctrl-btn mute" id="hw-mute-btn"><span
-                                                class="material-icons-round">volume_up</span></button>
-                                        <div class="vol-popup" id="volPopup">
-                                            <div class="hw-vol-slider-container" id="hw-vol-slider">
-                                                <div class="hw-vol-slider-fill" id="hw-vol-fill" style="width: 50%">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="ctrl-divider"></div>
-
-                                <!-- System Group -->
-                                <div class="ctrl-group">
-                                    <button class="run-ctrl-btn pip" id="hw-pip-btn"><span
-                                            class="material-icons-round">picture_in_picture_alt</span></button>
-                                    <button class="run-ctrl-btn fs" id="hw-fs-btn"><span
-                                            class="material-icons-round">fullscreen</span></button>
-                                </div>
-
-                                <div class="run-timer-bar">
-                                    <div class="run-timer-fill" id="runTimerFill"></div>
+                            <!-- Infinity / Timer -->
+                            <div class="timer-wrapper header-timer" id="runTimerContainer">
+                                <button class="remote-btn accent small" id="runTimeBtn">
+                                    <span class="material-icons-round">all_inclusive</span>
+                                </button>
+                                <!-- Inline Expand -->
+                                <div class="timer-expand-inline" id="timerExpand">
+                                    <button class="mini-btn" id="add1mBtn">+1</button>
+                                    <button class="mini-btn" id="add5mBtn">+5</button>
+                                    <button class="mini-btn danger" id="stopLoopBtn">✕</button>
                                 </div>
                             </div>
+
+                            <div class="remote-divider"></div>
+
+                            <!-- Navigation Stack -->
+                            <div class="nav-stack">
+                                <button class="remote-btn small" id="runPrevBtn">
+                                    <span class="material-icons-round">keyboard_arrow_left</span>
+                                </button>
+                                <button class="remote-btn primary" id="hw-play-btn">
+                                    <span class="material-icons-round">play_arrow</span>
+                                </button>
+                                <button class="remote-btn small" id="runNextBtn">
+                                    <span class="material-icons-round">keyboard_arrow_right</span>
+                                </button>
+                            </div>
+
+                            <div class="remote-divider"></div>
+
+                            <!-- Tools Vertical Stack -->
+                            <div class="tools-stack">
+                                <!-- Favorite -->
+                                <button class="remote-btn small" id="runFavBtn">
+                                    <span class="material-icons-round">star_border</span>
+                                </button>
+
+                                <!-- Volume Slider (Segmented) -->
+                                <div class="vol-slider-container" id="volSegmentedSlider">
+                                    <!-- Segmented bar -->
+                                    <div class="vol-segmented-track">
+                                        <div class="vol-segmented-fill" id="volLevelFill"></div>
+                                        <!-- Overlay for segment lines -->
+                                        <div class="vol-segment-overlay"></div>
+                                    </div>
+
+                                    <!-- Mute Button at bottom -->
+                                    <button class="vol-mute-btn" id="hw-mute-btn">
+                                        <span class="material-icons-round">volume_up</span>
+                                    </button>
+                                </div>
+
+                                <div class="remote-divider"></div>
+
+                                <!-- PiP -->
+                                <button class="remote-btn small" id="hw-pip-btn">
+                                    <span class="material-icons-round">picture_in_picture_alt</span>
+                                </button>
+
+                                <!-- Fullscreen -->
+                                <button class="remote-btn small" id="hw-fs-btn">
+                                    <span class="material-icons-round">fullscreen</span>
+                                </button>
+
+                            </div>
+
+                            <!-- Timer Progress -->
+                            <div class="dock-progress-bar">
+                                <div class="dock-progress-fill" id="runTimerFill"></div>
+                            </div>
+
                         </div>
                     </div>
 

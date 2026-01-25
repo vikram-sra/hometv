@@ -113,32 +113,24 @@ A retro-styled, modern IPTV streaming terminal for watching free live TV channel
 
 ---
 
-## ✨ Changelog (January 25, 2026)
+## ✨ Changelog (v3.1 - January 25, 2026)
 
-### Compact Sidebar Redesign
-- **TV Icon Header**: Replaced "HOME TV" text with a sleek TV icon featuring neon glow effects.
-- **Compact Config Panel**: Reduced padding, gaps, and font sizes throughout the configuration section.
-- **Smaller Channel Items**: Channel logos reduced from 32px to 26px, names from 10px to 9px.
-- **Refined Buttons**: Favorite and list buttons shrunk from 28px to 22px with lighter shadows.
-- **Tighter Lists Header**: Favorites section headers and "New List" button made more compact.
-- **Minimal Status Bar**: Reduced padding and font sizes, status dot from 8px to 6px.
-- **Overall Space Savings**: ~25% reduction in vertical space usage across all sidebar elements.
+### 🎛️ Vertical Floating Remote
+- **New Form Factor**: Replaced the bottom dock with a sleek, draggable vertical remote control inspired by physical remotes.
+- **Smart Positioning**: Drag logic now constrains the remote's center to the screen, ensuring visibility.
+- **Static Dimensions**: Enforced fixed heights for channel names and groups to prevent layout jumps during navigation.
 
-### Unified Dock & UI Cleanup
-- **Removed Run Mode Sidebar Button**: Cleaned up the sidebar by removing the bulky "Run Mode" section.
-- **Unified Controls Dock**: Moved all playback, loop, and system controls into a single, polished dock at the bottom of the screen.
-- **Global Scaling**: Reduced the overall size of the dock and top bar for a more professional, "compact" terminal feel.
-- **Typography Sync**: Synchronized all top bar font sizes to a consistent 9px for better visual balance.
+### 🪐 Visual Enhancements
+- **Infinity Loop Sphere**: Reimagined the Infinity/Loop button as a colorful, rotating 3D planet sphere (conic & linear gradient animation).
+- **Active Glow Effects**: Favorite button now glows with a golden aura when active.
+- **Polished Icons**: Replaced Up/Down nav arrows with intuitive Left/Right (`<`, `>`) chevron icons.
+- **Scaled UI**: optimized visual elements for better spacing and readability on the new remote surface.
 
-### Intelligent Visuals
-- **Dynamic Text Placeholders**: Added a system that extracts the first word of a channel name and displays it inside the icon container if no logo is available.
-- **Auto-Scaling Font Size**: Placeholders dynamically adjust their font size (from 14px down to 6px) to perfectly fit the text within the square.
-- **Enhanced Logo Containers**: Icons now sit on a refined dark gray (`#2a2d32`) background with subtle inner highlights and depth shadows.
-- **Minimized Padding**: Reduced icon padding to 2px, allowing logos to "zoom" and fill their containers effectively.
-
-### UX & Reliability
-- **Sidebar Sync**: The sidebar now automatically highlights and scrolls to the current channel when skipping or looping.
-- **Infinity/Loop Restoration**: Fixed the loop functionality to work independently of any specific "mode," allowing for seamless auto-advance.
+### 🛠️ Layout & Logic
+- **Fixed Fullscreen**: Implemented CSS overrides to ensure the TV container truly fills the screen without borders.
+- **Volume Slider Polish**: Refined the expanded volume slider container to perfectly fit the mute button at the bottom.
+- **Drag Stability**: Fixed issue where dragging the channel logo would detach it; disabled pointer events on the logo.
+- **Optimized Spacing**: Tightened margins between channel name, time, and controls for a compact, professional look.
 
 ---
 
