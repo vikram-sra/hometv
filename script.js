@@ -770,25 +770,22 @@ class TVApp {
         if (this.ui.hwVolFill) this.ui.hwVolFill.style.width = (v * 100) + '%';
     }
 
-    showOSD(duration = 4000) {
+    showOSD(duration = 10000) {
         const tvContainer = document.querySelector('.tv-container');
         tvContainer.classList.add('show-controls');
         if (this.osdTimeout) clearTimeout(this.osdTimeout);
 
         this.osdTimeout = setTimeout(() => {
-            // Check if timer is active or expanded - if so, don't hide the dock
+            // Check if timer is expanded - if so, don't hide the dock
             const isExpanded = this.ui.runTimerContainer?.classList.contains('expanded');
-            const isActive = !this.state.runPaused;
 
-            if (isExpanded || isActive) {
-                // Keep calling showOSD to stay visible
+            if (isExpanded) {
+                // Keep calling showOSD to stay visible while adjusting
                 this.showOSD(duration);
                 return;
             }
 
-            if (document.fullscreenElement || document.webkitFullscreenElement || this.state.runMode) {
-                tvContainer.classList.remove('show-controls');
-            }
+            tvContainer.classList.remove('show-controls');
         }, duration);
     }
 
