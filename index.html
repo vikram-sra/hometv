@@ -132,13 +132,6 @@
 
         <div class="channel-list" id="channelList"></div>
 
-        <div class="run-section">
-            <button class="run-btn" id="runBtn">
-                <span class="run-icon">⚡</span>
-                <span class="run-text">RUN MODE</span>
-                <div class="run-glare"></div>
-            </button>
-        </div>
 
         <div class="status-bar">
             <div class="status-item">
@@ -156,7 +149,7 @@
             <div class="tv-screen-bezel">
                 <div class="static-noise"></div>
                 <main class="main-display">
-                    <div class="display-header visible" id="displayHeader">
+                    <div class="display-header" id="displayHeader">
                         <span class="display-title" id="displayTitle">[ NO SIGNAL ]</span>
                         <span class="display-info" id="displayInfo"></span>
                         <span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>LIVE</span>
@@ -170,69 +163,84 @@
                         </div>
                     </div>
 
-                    <!-- Run Mode Overlay -->
+                    <!-- Unified Controls Dock -->
                     <div id="runModeOverlay" class="run-mode-overlay">
                         <div class="run-controls">
                             <div class="run-controls-group">
-                                <button class="run-ctrl-btn prev" id="runPrevBtn"><span
-                                        class="material-icons-round">skip_previous</span></button>
-                                <button class="run-ctrl-btn fav" id="runFavBtn"><span
-                                        class="material-icons-round">star_border</span></button>
-                                <button class="run-ctrl-btn next" id="runNextBtn"><span
-                                        class="material-icons-round">skip_next</span></button>
-                                <div class="run-timer-container" id="runTimerContainer">
-                                    <button class="run-ctrl-btn time" id="runTimeBtn"><span
-                                            class="material-icons-round">timer</span></button>
-                                    <div class="timer-adjust-group" id="timerAdjustGroup">
-                                        <button class="adjust-btn" id="add1mBtn">+1m</button>
-                                        <button class="adjust-btn" id="add5mBtn">+5m</button>
-                                        <button class="adjust-btn" id="reset30sBtn">RESET</button>
-                                        <button class="adjust-btn stop" id="stopLoopBtn">STOP</button>
+                                <!-- Loop/Timer Group -->
+                                <div class="ctrl-group">
+                                    <div class="run-timer-container" id="runTimerContainer">
+                                        <button class="run-ctrl-btn time" id="runTimeBtn"><span
+                                                class="material-icons-round">loop</span></button>
+                                        <div class="timer-adjust-group" id="timerAdjustGroup">
+                                            <button class="adjust-btn" id="add1mBtn">+1m</button>
+                                            <button class="adjust-btn" id="add5mBtn">+5m</button>
+                                            <button class="adjust-btn" id="reset30sBtn">RESET</button>
+                                            <button class="adjust-btn stop" id="stopLoopBtn">STOP</button>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <div class="ctrl-divider"></div>
+
+                                <!-- Navigation Group -->
+                                <div class="ctrl-group">
+                                    <button class="run-ctrl-btn prev" id="runPrevBtn"><span
+                                            class="material-icons-round">skip_previous</span></button>
+                                    <button class="run-ctrl-btn play" id="hw-play-btn"><span
+                                            class="material-icons-round">play_arrow</span></button>
+                                    <button class="run-ctrl-btn next" id="runNextBtn"><span
+                                            class="material-icons-round">skip_next</span></button>
+                                </div>
+
+                                <div class="ctrl-divider"></div>
+
+                                <!-- Content Group -->
+                                <div class="ctrl-group">
+                                    <button class="run-ctrl-btn fav" id="runFavBtn"><span
+                                            class="material-icons-round">star_border</span></button>
+                                    <div class="vol-control-wrapper">
+                                        <button class="run-ctrl-btn mute" id="hw-mute-btn"><span
+                                                class="material-icons-round">volume_up</span></button>
+                                        <div class="vol-popup" id="volPopup">
+                                            <div class="hw-vol-slider-container" id="hw-vol-slider">
+                                                <div class="hw-vol-slider-fill" id="hw-vol-fill" style="width: 50%">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ctrl-divider"></div>
+
+                                <!-- System Group -->
+                                <div class="ctrl-group">
+                                    <button class="run-ctrl-btn pip" id="hw-pip-btn"><span
+                                            class="material-icons-round">picture_in_picture_alt</span></button>
+                                    <button class="run-ctrl-btn fs" id="hw-fs-btn"><span
+                                            class="material-icons-round">fullscreen</span></button>
+                                </div>
+
+                                <div class="run-timer-bar">
+                                    <div class="run-timer-fill" id="runTimerFill"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="run-timer-bar">
-                            <div class="run-timer-fill" id="runTimerFill"></div>
                         </div>
                     </div>
 
                     <div class="player-container">
                         <video id="video" playsinline></video>
                     </div>
-
-
                 </main>
+            </div><!-- /tv-screen-bezel -->
+        </div><!-- /tv-case -->
+    </div><!-- /tv-container -->
 
-                <!-- Controls overlay on video -->
-                <div class="tv-controls">
-                    <div class="controls-left">
-                        <button class="hw-btn" id="hw-play-btn" title="Play/Pause"><span
-                                class="material-icons-round">play_arrow</span></button>
-                        <button class="hw-btn" id="hw-mute-btn" title="Mute"><span
-                                class="material-icons-round">volume_up</span></button>
-                        <div class="hw-vol-slider-container" id="hw-vol-slider">
-                            <div class="hw-vol-slider-fill" id="hw-vol-fill" style="width: 50%"></div>
-                        </div>
-                    </div>
-                    <div class="seek-bar-container" id="seek-bar">
-                        <div class="seek-bar-fill" id="seek-fill" style="width: 0%"></div>
-                    </div>
-                    <div class="controls-right">
-                        <button class="hw-btn" id="hw-pip-btn" title="Picture-in-Picture"><span
-                                class="material-icons-round">picture_in_picture_alt</span></button>
-                        <button class="hw-btn" id="hw-fs-btn" title="Fullscreen"><span
-                                class="material-icons-round">fullscreen</span></button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Database Module -->
+    <script src="db.js"></script>
 
-        <!-- Database Module -->
-        <script src="db.js"></script>
-
-        <!-- Main Application Script -->
-        <script src="script.js"></script>
+    <!-- Main Application Script -->
+    <script src="script.js"></script>
 </body>
 
 </html>

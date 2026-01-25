@@ -22,11 +22,8 @@ class TVApp {
             retryConfig: { maxRetries: 2, baseDelay: 1000, currentRetry: 0 },
             deadChannels: new Map(),
             isAutoSkipping: false,
-            runMode: false,
             runTimer: null,
             stallCheckTimer: null,
-            runHistory: [],
-            runHistoryIndex: -1,
             runCheckInterval: 30000,
             runPaused: true,
             currentFavList: null
@@ -60,20 +57,15 @@ class TVApp {
             seekFill: document.getElementById('seek-fill'),
             collapseBtn: document.getElementById('collapseBtn'),
             updateNotification: document.getElementById('updateNotification'),
-            updateNotification: document.getElementById('updateNotification'),
             toast: document.getElementById('toast'),
-            sortSelect: document.getElementById('sortSelect'), // New reference
+            sortSelect: document.getElementById('sortSelect'),
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
             sidebarBackdrop: document.getElementById('sidebarBackdrop'),
 
-            // Run Mode
-            runBtn: document.getElementById('runBtn'),
+            // Loop Controls
             runModeOverlay: document.getElementById('runModeOverlay'),
-            runHomeBtn: document.getElementById('runHomeBtn'),
             runNextBtn: document.getElementById('runNextBtn'),
             runPrevBtn: document.getElementById('runPrevBtn'),
-            runFavBtn: document.getElementById('runFavBtn'),
-            runLoopBtn: document.getElementById('runLoopBtn'),
             runTimeBtn: document.getElementById('runTimeBtn'),
             runTimerContainer: document.getElementById('runTimerContainer'),
             add1mBtn: document.getElementById('add1mBtn'),
@@ -81,6 +73,7 @@ class TVApp {
             reset30sBtn: document.getElementById('reset30sBtn'),
             stopLoopBtn: document.getElementById('stopLoopBtn'),
             runTimerFill: document.getElementById('runTimerFill'),
+            volPopup: document.getElementById('volPopup'),
             tvCase: document.querySelector('.tv-case')
         };
 
@@ -123,7 +116,7 @@ class TVApp {
 
         this.registerServiceWorker();
         this.startLiveTimeUpdater();
-        this.updateRunUI();
+        this.updateTimerUI();
 
         // Global functions
         window.setListTab = (tab, el) => this.setListTab(tab, el);
@@ -306,36 +299,26 @@ class TVApp {
             this.ui.sidebarBackdrop.onclick = () => this.closeMobileSidebar();
         }
 
-        if (this.ui.runBtn) {
-            this.ui.runBtn.onclick = () => {
-                if (this.state.runMode) this.stopRunMode();
-                else this.startRunMode();
-            };
-        }
-
         if (this.ui.runNextBtn) {
-            this.ui.runNextBtn.onclick = () => {
-                if (this.state.runMode) this.playRandomChannel();
-                else this.playNextSequentialChannel();
+            this.ui.runNextBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.showOSD();
+                this.playNextSequentialChannel();
             };
         }
 
         if (this.ui.runPrevBtn) {
-            this.ui.runPrevBtn.onclick = () => {
-                if (this.state.runMode) this.playPreviousRunChannel();
-                else this.playPreviousSequentialChannel();
-            };
-        }
-
-        if (this.ui.runFavBtn) {
-            this.ui.runFavBtn.onclick = () => {
-                const ch = this.state.currentChannel;
-                if (ch) this.toggleFavoriteManual(ch.url, null);
+            this.ui.runPrevBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.showOSD();
+                this.playPreviousSequentialChannel();
             };
         }
 
         if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.onclick = () => {
+            this.ui.runTimeBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (this.ui.video.paused) this.ui.video.play();
                 if (this.state.runPaused) {
                     this.state.runPaused = false;
                     this.resetRunTimer();
@@ -343,7 +326,7 @@ class TVApp {
                 } else {
                     this.ui.runTimerContainer.classList.toggle('expanded');
                 }
-                this.updateRunUI();
+                this.updateTimerUI();
             };
         }
 
@@ -366,7 +349,6 @@ class TVApp {
                 e.stopPropagation();
                 this.state.runCheckInterval = 30000;
                 this.resetRunTimer();
-                this.showToast('Reset to 30s');
             };
         }
 
@@ -376,7 +358,7 @@ class TVApp {
                 this.state.runPaused = true;
                 this.ui.runTimerContainer.classList.remove('expanded');
                 this.stopTimerOnly();
-                this.updateRunUI();
+                this.updateTimerUI();
             };
         }
     }
@@ -386,9 +368,12 @@ class TVApp {
         if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
         this.state.runTimer = null;
         this.state.countdownInterval = null;
+        this.state.runTimerEnd = null;
         this.ui.runTimerFill.style.transition = 'none';
         this.ui.runTimerFill.style.width = '0%';
-        if (this.ui.runTimeBtn) this.ui.runTimeBtn.textContent = 'PAUSED';
+        if (this.ui.runTimeBtn) {
+            this.ui.runTimeBtn.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
+        }
     }
 
     toggleMobileSidebar() {
@@ -401,47 +386,6 @@ class TVApp {
         this.ui.sidebarBackdrop.classList.remove('visible');
     }
 
-    startRunMode() {
-        if (this.state.runMode) return;
-        this.state.runMode = true;
-        this.state.runCheckInterval = 30000;
-        this.state.runHistory = [];
-        this.state.runHistoryIndex = -1;
-        this.state.runPaused = false;
-        if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
-
-        this.ui.tvCase.classList.add('run-mode');
-
-        // Gracefully collapse sidebar
-        if (!this.state.sidebarCollapsed) {
-            this.state.sidebarCollapsed = true;
-            this.ui.sidebar.classList.add('collapsed');
-            this.db.setPref('sidebar_collapsed', true);
-        }
-
-        this.closeMobileSidebar();
-        this.playRandomChannel();
-        if (this.ui.runTimerContainer) this.ui.runTimerContainer.classList.add('expanded');
-        this.resetRunTimer();
-    }
-
-    stopRunMode() {
-        this.state.runMode = false;
-        this.ui.tvCase.classList.remove('run-mode');
-        this.ui.runTimerContainer.classList.remove('expanded');
-
-        if (this.state.runTimer) clearTimeout(this.state.runTimer);
-        if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
-        if (this.state.stallCheckTimer) clearTimeout(this.state.stallCheckTimer);
-
-        this.state.runTimer = null;
-        this.state.countdownInterval = null;
-
-        // Reset timer bar
-        this.ui.runTimerFill.style.transition = 'none';
-        this.ui.runTimerFill.style.width = '0%';
-        this.updateRunUI();
-    }
 
     getScopedChannels() {
         if (this.state.activeTab === 'favorites' && this.state.currentFavList && this.state.currentFavList !== 'all') {
@@ -463,40 +407,18 @@ class TVApp {
 
         if (workingChannels.length === 0) {
             this.showToast('No working channels in this view');
-            if (this.state.runMode) this.stopRunMode();
             return;
         }
 
-        if (this.state.runHistoryIndex < this.state.runHistory.length - 1) {
-            this.state.runHistoryIndex++;
-            const ch = this.state.runHistory[this.state.runHistoryIndex];
-            this.playChannel(ch);
-        } else {
-            const r = Math.floor(Math.random() * workingChannels.length);
-            const nextCh = workingChannels[r];
-            this.state.runHistory.push(nextCh);
-            this.state.runHistoryIndex++;
-            if (this.state.runHistory.length > 100) {
-                this.state.runHistory.shift();
-                this.state.runHistoryIndex--;
-            }
-            this.state.currentChannel = nextCh;
-            this.playChannel(nextCh);
-        }
+        const r = Math.floor(Math.random() * workingChannels.length);
+        const nextCh = workingChannels[r];
+        this.state.currentChannel = nextCh;
+        this.playChannel(nextCh);
 
+        this.state.runTimerEnd = Date.now() + this.state.runCheckInterval;
         this.resetRunTimer();
     }
 
-    playPreviousRunChannel() {
-        if (this.state.runHistoryIndex <= 0) {
-            this.showToast('No previous channel');
-            return;
-        }
-        this.state.runHistoryIndex--;
-        const ch = this.state.runHistory[this.state.runHistoryIndex];
-        this.playChannel(ch);
-        this.resetRunTimer();
-    }
 
     toggleTimerExpansion() {
         const container = this.ui.runTimerContainer;
@@ -504,18 +426,21 @@ class TVApp {
     }
 
     adjustRunTimer(ms) {
-        if (this.state.runPaused || !this.state.runTimerEnd) return;
+        if (this.state.runPaused) return;
 
-        // Calculate remaining time
         const now = Date.now();
-        const remaining = Math.max(0, this.state.runTimerEnd - now);
+        if (!this.state.runTimerEnd || this.state.runTimerEnd <= now) {
+            this.state.runTimerEnd = now;
+        }
 
-        // Add new time
-        const newTotal = remaining + ms;
-        this.state.runCheckInterval = newTotal;
+        // Add to current end time
+        this.state.runTimerEnd += ms;
+
+        // Update the reference interval to reflect the new total duration
+        const newRemaining = this.state.runTimerEnd - now;
+        this.state.runCheckInterval = newRemaining;
+
         this.resetRunTimer();
-
-        this.showToast(`Added ${ms / 60000}m to timer`);
     }
 
     resetRunTimer() {
@@ -527,29 +452,35 @@ class TVApp {
             return;
         }
 
-        const interval = this.state.runCheckInterval;
-        this.state.runTimerEnd = Date.now() + interval;
+        const now = Date.now();
+        if (!this.state.runTimerEnd || this.state.runTimerEnd <= now) {
+            this.state.runTimerEnd = now + this.state.runCheckInterval;
+        }
+
+        const currentTotal = Math.max(this.state.runCheckInterval, 1000);
+        const remaining = Math.max(0, this.state.runTimerEnd - now);
 
         this.state.runTimer = setTimeout(() => {
             if (!this.state.runPaused) {
-                if (this.state.runMode) this.playRandomChannel();
-                else this.playNextSequentialChannel();
+                this.playNextSequentialChannel();
             }
-        }, interval);
+        }, remaining);
 
-        // Start countdown display
         this.updateCountdownDisplay();
-        this.state.countdownInterval = setInterval(() => {
-            this.updateCountdownDisplay();
-        }, 1000);
+        this.state.countdownInterval = setInterval(() => this.updateCountdownDisplay(), 1000);
 
-        // Animate progress bar
+        // UI state check
+        this.updateTimerUI();
+
+        // Progress bar: Current % -> 0%
+        const percent = Math.min(100, (remaining / currentTotal) * 100);
+
         this.ui.runTimerFill.style.transition = 'none';
-        this.ui.runTimerFill.style.width = '0%';
+        this.ui.runTimerFill.style.width = `${percent}%`;
         // Force reflow
         void this.ui.runTimerFill.offsetWidth;
-        this.ui.runTimerFill.style.transition = `width ${interval / 1000}s linear`;
-        this.ui.runTimerFill.style.width = '100%';
+        this.ui.runTimerFill.style.transition = `width ${remaining / 1000}s linear`;
+        this.ui.runTimerFill.style.width = '0%';
     }
 
     playNextSequentialChannel() {
@@ -592,11 +523,12 @@ class TVApp {
         }
 
         if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.textContent = display;
+            this.ui.runTimeBtn.innerHTML = `<span class="material-icons-round" style="font-size:14px; margin-right:4px;">all_inclusive</span>${display}`;
         }
 
         if (diff <= 0) {
             clearInterval(this.state.countdownInterval);
+            this.ui.runTimerFill.style.width = '0%';
         }
     }
 
@@ -612,8 +544,10 @@ class TVApp {
             this.ui.runFavBtn.classList.toggle('active', isFav);
         }
 
-        if (this.ui.runTimeBtn && this.state.runPaused) {
-            this.ui.runTimeBtn.innerHTML = `<span class="material-icons-round">timer</span>`;
+        if (this.ui.runTimeBtn) {
+            if (this.state.runPaused) {
+                this.ui.runTimeBtn.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
+            }
         }
 
         if (this.ui.runPrevBtn) {
@@ -629,8 +563,18 @@ class TVApp {
         }
     }
 
+    updateTimerUI() {
+        if (this.ui.tvCase) {
+            this.ui.tvCase.classList.toggle('timer-active', !this.state.runPaused);
+        }
+
+        if (this.ui.runTimerFill) {
+            this.ui.runTimerFill.style.opacity = '1';
+        }
+    }
+
     setupPlayer() {
-        // Plyr removed for direct control and perfect object-fit
+        // Direct control and perfect object-fit
         this.ui.video.controls = false;
     }
 
@@ -638,44 +582,78 @@ class TVApp {
         this.ui.video.volume = this.state.volume;
         this.updateVolumeUI(this.state.volume);
 
-        this.ui.hwPlay.onclick = () => {
-            if (this.ui.video.paused) this.ui.video.play();
-            else this.ui.video.pause();
-        };
+        if (this.ui.hwPlay) {
+            this.ui.hwPlay.onclick = (e) => {
+                e.stopPropagation();
+                this.showOSD();
+                if (this.ui.video.paused) this.ui.video.play();
+                else this.ui.video.pause();
+            };
+        }
 
-        this.ui.hwMute.onclick = () => {
-            this.ui.video.muted = !this.ui.video.muted;
-            this.ui.hwMute.innerHTML = this.ui.video.muted
-                ? '<span class="material-icons-round">volume_off</span>'
-                : '<span class="material-icons-round">volume_up</span>';
-        };
+        if (this.ui.hwMute) {
+            this.ui.hwMute.onclick = (e) => {
+                e.stopPropagation();
+                if (this.ui.volPopup) {
+                    this.ui.volPopup.classList.toggle('active');
+                }
+            };
+        }
 
-        this.ui.hwFS.onclick = () => {
-            const el = document.querySelector('.tv-container');
-            if (!document.fullscreenElement) {
-                el.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        };
+        // Close volPopup on outside click
+        document.addEventListener('click', () => {
+            if (this.ui.volPopup) this.ui.volPopup.classList.remove('active');
+        });
+
+        if (this.ui.volPopup) {
+            this.ui.volPopup.onclick = (e) => e.stopPropagation();
+        }
+
+        if (this.ui.hwFS) {
+            this.ui.hwFS.onclick = (e) => {
+                e.stopPropagation();
+                this.showOSD();
+                const el = document.querySelector('.tv-container');
+                const video = this.ui.video;
+
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    if (el.requestFullscreen) {
+                        el.requestFullscreen().catch(err => {
+                            console.error(`Fullscreen error: ${err.message}`);
+                        });
+                    } else if (video.webkitEnterFullscreen) {
+                        video.webkitEnterFullscreen();
+                    } else if (el.webkitRequestFullscreen) {
+                        el.webkitRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                }
+            };
+        }
 
         // Fullscreen OSD auto-hide
         this.setupFullscreenOSD();
 
-        // Picture-in-Picture toggle
-        this.ui.hwPIP.onclick = async () => {
-            try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else if (document.pictureInPictureEnabled) {
-                    await this.ui.video.requestPictureInPicture();
+        if (this.ui.hwPIP) {
+            this.ui.hwPIP.onclick = async (e) => {
+                e.stopPropagation();
+                this.showOSD();
+                try {
+                    if (document.pictureInPictureElement) {
+                        await document.exitPictureInPicture();
+                    } else if (document.pictureInPictureEnabled) {
+                        await this.ui.video.requestPictureInPicture();
+                    }
+                } catch (err) {
+                    console.error('PIP error:', err);
                 }
-            } catch (err) {
-                console.error('PIP error:', err);
-            }
-        };
+            };
+        }
 
         // Update PIP icon on enter/exit
         this.ui.video.addEventListener('enterpictureinpicture', () => {
@@ -703,21 +681,24 @@ class TVApp {
                 : '<span class="material-icons-round">volume_up</span>';
         };
 
-        this.ui.hwVolSlider.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            updateVolume(e);
-            const onMove = (e) => updateVolume(e);
-            const onUp = () => {
-                this.db.setPref('tv_volume', this.state.volume);
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
+        if (this.ui.hwVolSlider) {
+            this.ui.hwVolSlider.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                updateVolume(e);
+                const onMove = (e) => updateVolume(e);
+                const onUp = () => {
+                    this.db.setPref('tv_volume', this.state.volume);
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
 
         // Draggable seek bar
         const updateSeek = (e) => {
+            if (!this.ui.seekBar) return;
             const rect = this.ui.seekBar.getBoundingClientRect();
             const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
             const video = this.ui.video;
@@ -730,20 +711,24 @@ class TVApp {
                 video.currentTime = video.duration * pct;
             }
 
-            this.ui.seekFill.style.width = (pct * 100) + '%';
+            if (this.ui.seekFill) {
+                this.ui.seekFill.style.width = (pct * 100) + '%';
+            }
         };
 
-        this.ui.seekBar.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            updateSeek(e);
-            const onMove = (e) => updateSeek(e);
-            const onUp = () => {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
+        if (this.ui.seekBar) {
+            this.ui.seekBar.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                updateSeek(e);
+                const onMove = (e) => updateSeek(e);
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
 
         // Update seek bar as video plays
         this.ui.video.addEventListener('timeupdate', () => {
@@ -760,7 +745,9 @@ class TVApp {
                 pct = video.currentTime / video.duration;
             }
 
-            this.ui.seekFill.style.width = Math.max(0, Math.min(100, pct * 100)) + '%';
+            if (this.ui.seekFill) {
+                this.ui.seekFill.style.width = Math.max(0, Math.min(100, pct * 100)) + '%';
+            }
         });
 
         this.ui.video.addEventListener('dblclick', () => {
@@ -783,49 +770,79 @@ class TVApp {
         if (this.ui.hwVolFill) this.ui.hwVolFill.style.width = (v * 100) + '%';
     }
 
+    showOSD(duration = 4000) {
+        const tvContainer = document.querySelector('.tv-container');
+        tvContainer.classList.add('show-controls');
+        if (this.osdTimeout) clearTimeout(this.osdTimeout);
+
+        this.osdTimeout = setTimeout(() => {
+            // Check if timer is active or expanded - if so, don't hide the dock
+            const isExpanded = this.ui.runTimerContainer?.classList.contains('expanded');
+            const isActive = !this.state.runPaused;
+
+            if (isExpanded || isActive) {
+                // Keep calling showOSD to stay visible
+                this.showOSD(duration);
+                return;
+            }
+
+            if (document.fullscreenElement || document.webkitFullscreenElement || this.state.runMode) {
+                tvContainer.classList.remove('show-controls');
+            }
+        }, duration);
+    }
+
+    toggleOSD(e) {
+        if (e) {
+            // If clicking a button, adjust-btn, or slider, DON'T toggle (just show)
+            const isInteractive = e.target.closest('button, .hw-vol-slider-container, .seek-bar-container, .adjust-btn');
+
+            if (isInteractive) {
+                this.showOSD(); // Keep it visible during interaction
+                return;
+            }
+        }
+
+        const tvContainer = document.querySelector('.tv-container');
+        if (tvContainer.classList.contains('show-controls')) {
+            tvContainer.classList.remove('show-controls');
+            if (this.osdTimeout) clearTimeout(this.osdTimeout);
+        } else {
+            this.showOSD();
+        }
+    }
+
     setupFullscreenOSD() {
         const tvContainer = document.querySelector('.tv-container');
-        let hideTimeout = null;
 
-        const showControls = () => {
-            tvContainer.classList.add('show-controls');
-            clearTimeout(hideTimeout);
-            hideTimeout = setTimeout(() => {
-                if (document.fullscreenElement) {
-                    tvContainer.classList.remove('show-controls');
-                }
-            }, 3000);
-        };
+        // Capture all clicks on the container area
+        tvContainer.addEventListener('click', (e) => this.toggleOSD(e));
 
-        // Show controls on mouse movement in fullscreen
         tvContainer.addEventListener('mousemove', () => {
-            if (document.fullscreenElement) {
-                showControls();
+            this.showOSD();
+        });
+
+        tvContainer.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'VIDEO' || e.target.classList.contains('main-display') || e.target.classList.contains('tv-container')) {
+                this.toggleOSD(e);
             }
         });
 
-        // Show controls on any click in fullscreen
-        tvContainer.addEventListener('click', () => {
-            if (document.fullscreenElement) {
-                showControls();
-            }
-        });
-
-        // Show controls on touch in fullscreen
-        tvContainer.addEventListener('touchstart', () => {
-            if (document.fullscreenElement) {
-                showControls();
-            }
-        });
-
-        // Cleanup when exiting fullscreen
         document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 tvContainer.classList.remove('show-controls');
-                clearTimeout(hideTimeout);
+                if (this.osdTimeout) clearTimeout(this.osdTimeout);
             } else {
-                // Show controls briefly when entering fullscreen
-                showControls();
+                this.showOSD();
+            }
+        });
+
+        document.addEventListener('webkitfullscreenchange', () => {
+            if (!document.webkitFullscreenElement) {
+                tvContainer.classList.remove('show-controls');
+                if (this.osdTimeout) clearTimeout(this.osdTimeout);
+            } else {
+                this.showOSD();
             }
         });
     }
@@ -1079,14 +1096,23 @@ class TVApp {
     createChannelItem(ch, index, listId = null) {
         const isFav = this.state.favorites.has(ch.url);
         const isDead = (this.state.deadChannels.get(ch.url) || 0) >= 3;
+        const isActive = this.state.currentChannel?.url === ch.url;
+
         const item = document.createElement('div');
-        item.className = `channel-item${isDead ? ' dead' : ''}`;
+        item.className = `channel-item${isDead ? ' dead' : ''}${isActive ? ' active' : ''}`;
         item.dataset.url = ch.url;
         item.tabIndex = 0;
 
+        const firstWord = ch.name ? ch.name.trim().split(/\s+/)[0] : '?';
+        let fontSize = '14px';
+        if (firstWord.length > 2) fontSize = '11px';
+        if (firstWord.length > 4) fontSize = '9px';
+        if (firstWord.length > 6) fontSize = '7px';
+        if (firstWord.length > 8) fontSize = '6px';
+
         const logo = ch.logo
-            ? `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.style.visibility='hidden'">`
-            : `<div class="ch-logo ch-logo-placeholder"></div>`;
+            ? `<img class="ch-logo" src="${ch.logo}" loading="lazy" onerror="this.onerror=null; this.outerHTML='<div class=&quot;ch-logo ch-logo-placeholder&quot; style=&quot;font-size: ${fontSize}&quot;>${firstWord}</div>';">`
+            : `<div class="ch-logo ch-logo-placeholder" style="font-size: ${fontSize}">${firstWord}</div>`;
 
         const listBtn = this.state.activeTab !== 'recents'
             ? `<button class="add-to-list-btn" onclick="event.stopPropagation(); event.preventDefault(); window.showAddToListMenu('${ch.url}', this); return false;">☰</button>`
@@ -1135,10 +1161,17 @@ class TVApp {
             btn.className = `fav-btn ${isFav ? 'active' : ''}`;
             btn.textContent = isFav ? '★' : '☆';
         }
+
+        // Force refresh all OSD/UI elements that might be showing this channel
+        this.updateRunUI();
+
         if (this.state.activeTab === 'favorites') this.renderFavoritesView();
 
-        // Update Run Mode UI
-        if (this.state.runMode) this.updateRunUI();
+        // Update list buttons if visible
+        document.querySelectorAll(`.channel-item[data-url="${url}"] .fav-btn`).forEach(b => {
+            b.className = `fav-btn ${isFav ? 'active' : ''}`;
+            b.textContent = isFav ? '★' : '☆';
+        });
     }
 
     toggleFavorite(url) {
@@ -1333,11 +1366,26 @@ class TVApp {
     playChannel(channel) {
         this.state.currentChannel = channel;
 
+        // Show OSD briefly when changing channels
+        this.showOSD();
+
         // Update Overlay UI state
-        this.updateRunUI();
+        this.updateTimerUI();
+
+        // Highlight and Scroll to channel in sidebar
+        const items = this.ui.channelList.querySelectorAll('.channel-item');
+        items.forEach(item => {
+            if (item.dataset.url === channel.url) {
+                item.classList.add('active');
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
 
         // If timer is unpaused, reset it for the new channel
         if (!this.state.runPaused) {
+            this.state.runTimerEnd = Date.now() + this.state.runCheckInterval;
             this.resetRunTimer();
         }
 
