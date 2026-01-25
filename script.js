@@ -225,14 +225,21 @@ class TVApp {
                     const worker = reg.installing;
                     worker.onstatechange = () => {
                         if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                            this.ui.updateNotification?.classList.remove('hidden');
-                            this.pendingUpdateWorker = worker;
+                            // Auto-apply update
+                            console.log('[App] New update installed, refreshing...');
+                            worker.postMessage('skipWaiting');
                         }
                     };
                 };
             }).catch(() => { });
 
-            navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+            // Ensure we only reload once
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
         }
     }
 

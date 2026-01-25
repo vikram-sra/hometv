@@ -1,5 +1,5 @@
 // HOME TV Service Worker v3.0
-const CACHE_NAME = 'hometv-v3';
+const CACHE_NAME = 'hometv-v3.1';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -13,8 +13,6 @@ const STATIC_ASSETS = [
 // External dependencies to cache
 const CDN_ASSETS = [
     'https://cdn.jsdelivr.net/npm/hls.js@latest',
-    'https://cdn.plyr.io/3.7.8/plyr.css',
-    'https://cdn.plyr.io/3.7.8/plyr.js',
     'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap'
 ];
 
