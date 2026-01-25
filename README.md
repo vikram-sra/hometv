@@ -7,7 +7,7 @@ A retro-styled, modern IPTV streaming terminal for watching free live TV channel
 ## 📋 UI Analysis & Recommendations
 
 **Analysis Date:** January 19, 2026  
-**Last Updated:** January 25, 2026
+**Last Updated:** January 25, 2026 (v2)
 
 ---
 
@@ -114,6 +114,15 @@ A retro-styled, modern IPTV streaming terminal for watching free live TV channel
 ---
 
 ## ✨ Changelog (January 25, 2026)
+
+### Compact Sidebar Redesign
+- **TV Icon Header**: Replaced "HOME TV" text with a sleek TV icon featuring neon glow effects.
+- **Compact Config Panel**: Reduced padding, gaps, and font sizes throughout the configuration section.
+- **Smaller Channel Items**: Channel logos reduced from 32px to 26px, names from 10px to 9px.
+- **Refined Buttons**: Favorite and list buttons shrunk from 28px to 22px with lighter shadows.
+- **Tighter Lists Header**: Favorites section headers and "New List" button made more compact.
+- **Minimal Status Bar**: Reduced padding and font sizes, status dot from 8px to 6px.
+- **Overall Space Savings**: ~25% reduction in vertical space usage across all sidebar elements.
 
 ### Unified Dock & UI Cleanup
 - **Removed Run Mode Sidebar Button**: Cleaned up the sidebar by removing the bulky "Run Mode" section.
