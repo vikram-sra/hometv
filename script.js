@@ -137,31 +137,32 @@ class TVApp {
         const group = document.getElementById('savedListsGroup');
         if (!group) return;
 
-        // Known saved list files in fav/ folder
-        const savedListFiles = ['Fav1.json'];
+        // Use hardcoded saved lists from saved-lists.js
+        const savedLists = window.SAVED_LISTS || [];
 
-        for (const filename of savedListFiles) {
-            try {
-                const response = await fetch(`fav/${filename}`);
-                if (response.ok) {
-                    const name = filename.replace('.json', '').toUpperCase();
-                    const option = document.createElement('option');
-                    option.value = `fav:${filename}`;
-                    option.textContent = `📁 ${name}`;
-                    group.appendChild(option);
-                }
-            } catch (err) {
-                console.warn(`[App] Could not load saved list: ${filename}`);
-            }
+        if (savedLists.length === 0) {
+            group.style.display = 'none';
+            return;
+        }
+
+        for (const list of savedLists) {
+            const option = document.createElement('option');
+            option.value = `saved:${list.name}`;
+            option.textContent = `📁 ${list.name}`;
+            group.appendChild(option);
         }
     }
 
-    async loadSavedListFile(filename) {
+    async loadSavedList(name) {
         try {
-            const response = await fetch(`fav/${filename}`);
-            if (!response.ok) throw new Error('Failed to fetch');
+            const savedLists = window.SAVED_LISTS || [];
+            const list = savedLists.find(l => l.name === name);
 
-            const data = await response.json();
+            if (!list || !list.data) {
+                throw new Error('Saved list not found');
+            }
+
+            const data = list.data;
             if (!data || data.version !== 1) {
                 throw new Error('Invalid saved list format');
             }
@@ -174,11 +175,11 @@ class TVApp {
 
             // Switch to favorites tab and refresh view
             this.setListTab('favorites', document.getElementById('tab-fav'));
-            this.showToast(`Loaded: ${filename.replace('.json', '')}`);
+            this.showToast(`Loaded: ${name}`);
 
         } catch (err) {
             this.showToast('Failed to load saved list: ' + err.message);
-            console.error('[App] loadSavedListFile error:', err);
+            console.error('[App] loadSavedList error:', err);
         }
     }
 
@@ -327,10 +328,10 @@ class TVApp {
             const val = this.ui.playlistSelect.value;
             if (val === 'manual') return;
 
-            // Handle saved list files from fav/ folder
-            if (val.startsWith('fav:')) {
-                const filename = val.replace('fav:', '');
-                this.loadSavedListFile(filename);
+            // Handle hardcoded saved lists
+            if (val.startsWith('saved:')) {
+                const name = val.replace('saved:', '');
+                this.loadSavedList(name);
                 return;
             }
 
