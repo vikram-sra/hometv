@@ -1431,12 +1431,27 @@ body {
 
 /* Primary Button */
 .remote-btn.primary {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
 }
 
 .remote-btn.primary span {
-    font-size: 20px;
+    font-size: 18px;
+}
+
+/* State Colors */
+.remote-btn.playing {
+    color: var(--accent-primary);
+    border-color: rgba(0, 255, 127, 0.4);
+    background: rgba(0, 255, 127, 0.1);
+    box-shadow: 0 0 12px rgba(0, 255, 127, 0.2);
+}
+
+.remote-btn.paused {
+    color: var(--live-red);
+    border-color: rgba(255, 59, 92, 0.4);
+    background: rgba(255, 59, 92, 0.1);
+    box-shadow: 0 0 12px rgba(255, 59, 92, 0.2);
 }
 
 /* Small Button */
@@ -1472,46 +1487,50 @@ body {
 
 /* Infinity Sphere Design */
 #runTimeBtn {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     border: none;
-    background: #000;
-    /* Fallback */
+    background: transparent;
+    /* Transparent to show sphere */
     border-radius: 50%;
     padding: 0;
     position: relative;
     overflow: hidden;
-    box-shadow:
-        0 4px 8px rgba(0, 0, 0, 0.4),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.5),
-        inset 0 2px 6px rgba(255, 255, 255, 0.4);
+    /* Prevent square corners */
+    /* Allow glow to spill out */
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Rotating Gradient on Pseudo-element (Y-Axis Spin) */
-#runTimeBtn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 300%;
-    /* Triple width for smooth seamless loop */
-    height: 100%;
-    background: linear-gradient(90deg,
-            #2E3192, #1BFFFF, #8A2387, #E94057, #F27121,
-            #2E3192, #1BFFFF, #8A2387, #E94057, #F27121
-            /* Repeat pattern */
-        );
-    background-size: 100% 100%;
-    animation: planetScroll 20s linear infinite;
-    will-change: transform;
+/* Sphere Container Inside Button */
+.sphere-container {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    flex-grow: 0;
+    pointer-events: none;
     z-index: 1;
+    background: radial-gradient(circle, rgba(0, 255, 127, 0.1) 0%, transparent 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-#runTimeBtn:hover::before {
-    animation-duration: 3s;
+.btn-label {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 2;
+    color: #fff;
+    pointer-events: none;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 1);
+    white-space: nowrap;
+    display: block;
+    line-height: 1;
 }
 
 #runTimeBtn:hover {
@@ -1526,18 +1545,6 @@ body {
     z-index: 2;
     position: relative;
     /* Static icon, no rotation */
-}
-
-@keyframes planetScroll {
-    0% {
-        transform: translateX(0);
-    }
-
-    100% {
-        transform: translateX(-50%);
-    }
-
-    /* Scroll half the width */
 }
 
 @keyframes sphereCounterSpin {
@@ -1601,11 +1608,14 @@ body {
     align-items: center;
     gap: 0;
     width: 30px;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 15px;
     padding: 0;
     margin: 4px 0;
-    transition: background 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
 
@@ -1629,16 +1639,18 @@ body {
 }
 
 .vol-slider-container.expanded .vol-segmented-track {
-    height: 100px;
-    /* Taller expanded */
+    height: 60px;
+    /* Compact expanded height */
     opacity: 1;
-    margin: 8px 0 8px;
+    margin: 6px 0 6px;
 }
 
 .vol-slider-container.expanded {
-    height: 152px;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 0 0 6px;
+    height: 100px;
+    background: rgba(20, 20, 24, 0.85);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    padding: 0 0 4px;
 }
 
 .vol-segmented-fill {
@@ -1664,26 +1676,26 @@ body {
     height: 100%;
     background: repeating-linear-gradient(to bottom,
             transparent 0px,
-            transparent 10px,
-            /* Spacing scaled */
-            rgba(0, 0, 0, 0.8) 10px,
-            rgba(0, 0, 0, 0.8) 12px);
+            transparent 5px,
+            /* Tighter segments */
+            rgba(0, 0, 0, 0.8) 5px,
+            rgba(0, 0, 0, 0.8) 6px);
     pointer-events: none;
     z-index: 2;
 }
 
 .vol-mute-btn {
-    width: 30px;
-    height: 30px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    width: 24px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .vol-mute-btn:hover {
@@ -1693,7 +1705,7 @@ body {
 }
 
 .vol-mute-btn span {
-    font-size: 16px;
+    font-size: 14px;
 }
 
 @keyframes slideDown {

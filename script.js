@@ -81,7 +81,8 @@ class TVApp {
             // New Elements
             volSegmentedTrack: document.querySelector('.vol-segmented-track'),
             volLevelFill: document.getElementById('volLevelFill'),
-            volSliderContainer: document.getElementById('volSegmentedSlider')
+            volSliderContainer: document.getElementById('volSegmentedSlider'),
+            runTimeLabel: document.getElementById('runTimeLabel')
         };
 
         this.plyr = null;
@@ -141,7 +142,7 @@ class TVApp {
         this.registerServiceWorker();
         this.startLiveTimeUpdater();
         this.updateTimerUI();
-
+        this.initializeInfinitySphere();
         // Global functions
         window.setListTab = (tab, el) => this.setListTab(tab, el);
         window.toggleFavoriteManual = (url, btn) => this.toggleFavoriteManual(url, btn);
@@ -420,7 +421,7 @@ class TVApp {
                     clearInterval(this.state.timerLoop);
                     this.state.timerLoop = null;
                     this.state.runPaused = true;
-                    this.ui.runTimeBtn.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
+                    if (this.ui.runTimeLabel) this.ui.runTimeLabel.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
                     this.ui.runTimerFill.style.width = '0%';
                     if (this.ui.runModeOverlay) this.ui.runModeOverlay.classList.remove('timer-active');
                     this.showOSD(3000);
@@ -488,8 +489,8 @@ class TVApp {
         this.state.runTimerEnd = null;
         this.ui.runTimerFill.style.transition = 'none';
         this.ui.runTimerFill.style.width = '0%';
-        if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
+        if (this.ui.runTimeLabel) {
+            this.ui.runTimeLabel.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
         }
     }
 
@@ -646,8 +647,8 @@ class TVApp {
             display = `${secs}s`;
         }
 
-        if (this.ui.runTimeBtn) {
-            this.ui.runTimeBtn.innerHTML = `<span style="font-size:10px; font-weight:700; letter-spacing:-0.5px;">${display}</span>`;
+        if (this.ui.runTimeLabel) {
+            this.ui.runTimeLabel.innerHTML = `<span style="font-size:10px; font-weight:700; letter-spacing:-0.5px;">${display}</span>`;
             this.ui.runTimeBtn.classList.add('accent'); // Ensure accent color
         }
 
@@ -669,9 +670,9 @@ class TVApp {
             this.ui.runFavBtn.classList.toggle('active', isFav);
         }
 
-        if (this.ui.runTimeBtn) {
+        if (this.ui.runTimeLabel) {
             if (this.state.runPaused) {
-                this.ui.runTimeBtn.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
+                this.ui.runTimeLabel.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
             }
         }
 
@@ -1066,10 +1067,14 @@ class TVApp {
 
         this.ui.video.addEventListener('play', () => {
             this.ui.hwPlay.innerHTML = '<span class="material-icons-round">pause</span>';
+            this.ui.hwPlay.classList.add('playing');
+            this.ui.hwPlay.classList.remove('paused');
         });
 
         this.ui.video.addEventListener('pause', () => {
             this.ui.hwPlay.innerHTML = '<span class="material-icons-round">play_arrow</span>';
+            this.ui.hwPlay.classList.add('paused');
+            this.ui.hwPlay.classList.remove('playing');
         });
     }
 
@@ -1862,6 +1867,138 @@ class TVApp {
                 this.ui.overlay.onclick = null;
             }).catch(() => { });
         };
+    }
+
+    initializeInfinitySphere() {
+        const container = document.getElementById('infinitySphere');
+        if (!container) return;
+
+        const init = () => {
+            if (typeof THREE === 'undefined') {
+                setTimeout(init, 100);
+                return;
+            }
+
+            const width = 36;
+            const height = 36;
+
+            try {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
+                camera.position.z = 2.0; // Same perspective relative to size
+
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setClearColor(0x000000, 0);
+                renderer.domElement.style.display = 'block';
+                container.appendChild(renderer.domElement);
+
+                // Stronger Lights for small scale visibility
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+
+                const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                sunLight.position.set(2, 2, 5);
+                scene.add(sunLight);
+
+                // Procedural Textures (Enhanced)
+                const createEarthTextures = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 256; // High res for better continents
+                    canvas.height = 128;
+                    const ctx = canvas.getContext('2d');
+
+                    ctx.fillStyle = '#0a1d4a';
+                    ctx.fillRect(0, 0, 256, 128);
+
+                    ctx.fillStyle = '#00ff7f';
+                    for (let i = 0; i < 40; i++) {
+                        const x = Math.random() * 256;
+                        const y = Math.random() * 128;
+                        const r = Math.random() * 25 + 10; // Larger land masses
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (x + r > 256) { ctx.beginPath(); ctx.arc(x - 256, y, r, 0, Math.PI * 2); ctx.fill(); }
+                        if (x - r < 0) { ctx.beginPath(); ctx.arc(x + 256, y, r, 0, Math.PI * 2); ctx.fill(); }
+                    }
+                    const diffuse = new THREE.CanvasTexture(canvas);
+                    const specular = new THREE.CanvasTexture(canvas); // Land is not spec, but we handle in material
+
+                    return { diffuse, specular };
+                };
+
+                const textures = createEarthTextures();
+
+                const axisGroup = new THREE.Group();
+                axisGroup.rotation.z = THREE.MathUtils.degToRad(23.4);
+                scene.add(axisGroup);
+
+                // Planet
+                const planetGeo = new THREE.SphereGeometry(1, 32, 32);
+                const planetMat = new THREE.MeshPhongMaterial({
+                    map: textures.diffuse,
+                    specularMap: textures.specular,
+                    specular: new THREE.Color(0x333333),
+                    shininess: 25,
+                    opacity: 1,
+                    transparent: true
+                });
+                const earth = new THREE.Mesh(planetGeo, planetMat);
+                axisGroup.add(earth);
+
+                // Clouds Layer (MasterMaps signature)
+                const createCloudTexture = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 128;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, 128, 64);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    for (let i = 0; i < 40; i++) {
+                        const x = Math.random() * 128;
+                        const y = Math.random() * 64;
+                        const r = Math.random() * 4 + 2;
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    return new THREE.CanvasTexture(canvas);
+                };
+
+                const clouds = new THREE.Mesh(
+                    new THREE.SphereGeometry(1.03, 32, 32),
+                    new THREE.MeshPhongMaterial({
+                        map: createCloudTexture(),
+                        transparent: true,
+                        opacity: 0.4
+                    })
+                );
+                axisGroup.add(clouds);
+
+                let isHovered = false;
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    const rotation = 0.008 * (isHovered ? 5 : 1);
+                    earth.rotation.y += rotation;
+                    clouds.rotation.y += rotation * 1.25; // Clouds move faster
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                const parent = container.parentElement;
+                parent.addEventListener('mouseenter', () => { isHovered = true; });
+                parent.addEventListener('mouseleave', () => { isHovered = false; });
+                parent.addEventListener('mousedown', () => { axisGroup.scale.set(0.85, 0.85, 0.85); });
+                window.addEventListener('mouseup', () => { axisGroup.scale.set(1, 1, 1); });
+
+            } catch (e) {
+                console.error("MasterMaps Earth Failed:", e);
+            }
+        };
+
+        init();
     }
 }
 
