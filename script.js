@@ -417,20 +417,35 @@ class TVApp {
         if (this.ui.runTimeBtn) {
             this.ui.runTimeBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (this.state.timerLoop) {
-                    clearInterval(this.state.timerLoop);
-                    this.state.timerLoop = null;
-                    this.state.runPaused = true;
-                    if (this.ui.runTimeLabel) this.ui.runTimeLabel.innerHTML = '<span class="material-icons-round">all_inclusive</span>';
-                    this.ui.runTimerFill.style.width = '0%';
-                    if (this.ui.runModeOverlay) this.ui.runModeOverlay.classList.remove('timer-active');
-                    this.showOSD(3000);
-                } else {
-                    if (this.ui.runModeOverlay) {
-                        this.ui.runModeOverlay.classList.toggle('timer-active');
-                        // Keep visible if active
-                        if (this.ui.runModeOverlay.classList.contains('timer-active')) {
+
+                // Start playback if paused, but don't pause if playing
+                if (this.ui.video && this.ui.video.paused) {
+                    this.ui.video.play().catch(e => { });
+                }
+
+                const overlay = this.ui.runModeOverlay;
+                if (overlay) {
+                    if (this.state.runPaused) {
+                        // Start 30s timer
+                        this.state.runPaused = false;
+                        this.state.runCheckInterval = 30000;
+                        this.state.runTimerEnd = Date.now() + 30000;
+                        this.resetRunTimer();
+
+                        overlay.classList.add('timer-active');
+                        overlay.classList.remove('remote-minimal');
+                        this.constrainDock();
+                        this.showOSD(30000);
+                    } else {
+                        // Toggle between minimal and expanded while running
+                        overlay.classList.toggle('remote-minimal');
+                        overlay.classList.toggle('timer-active');
+                        this.constrainDock();
+
+                        if (!overlay.classList.contains('remote-minimal')) {
                             this.showOSD(30000);
+                        } else {
+                            this.showOSD(3000);
                         }
                     }
                 }
@@ -464,7 +479,9 @@ class TVApp {
             this.ui.stopLoopBtn.onclick = (e) => {
                 e.stopPropagation();
                 this.state.runPaused = true;
-                this.ui.runModeOverlay.classList.remove('timer-active');
+                if (this.ui.runModeOverlay) {
+                    this.ui.runModeOverlay.classList.remove('timer-active', 'remote-minimal');
+                }
                 this.stopTimerOnly();
                 this.updateTimerUI();
             };
@@ -689,9 +706,41 @@ class TVApp {
         }
     }
 
+    constrainDock() {
+        const dock = this.ui.runModeOverlay;
+        if (!dock) return;
+
+        // Force layout update before measurements
+        requestAnimationFrame(() => {
+            const dockRect = dock.getBoundingClientRect();
+            const parentRect = dock.parentElement.getBoundingClientRect();
+
+            // Style.top sets the horizontal center line (translateY -50%)
+            // Let's get the target center position
+            let currentTop = parseFloat(dock.style.top) || (parentRect.height / 2);
+            let currentLeft = parseFloat(dock.style.left) || 16;
+
+            const minCenter = dockRect.height / 2;
+            const maxCenter = parentRect.height - (dockRect.height / 2);
+            const clampedCenter = Math.max(minCenter, Math.min(currentTop, maxCenter));
+
+            const maxLeft = parentRect.width - dockRect.width;
+            const clampedLeft = Math.max(0, Math.min(currentLeft, maxLeft));
+
+            dock.style.top = clampedCenter + 'px';
+            dock.style.left = clampedLeft + 'px';
+        });
+    }
+
     updateTimerUI() {
+        const isRunning = !this.state.runPaused;
+
         if (this.ui.tvCase) {
-            this.ui.tvCase.classList.toggle('timer-active', !this.state.runPaused);
+            this.ui.tvCase.classList.toggle('timer-active', isRunning);
+        }
+
+        if (this.ui.runModeOverlay) {
+            this.ui.runModeOverlay.classList.toggle('infinity-on', isRunning);
         }
 
         if (this.ui.runTimerFill) {

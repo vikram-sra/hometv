@@ -1409,7 +1409,17 @@ body {
 
 .remote-btn:active {
     background: rgba(255, 255, 255, 0.05);
-    /* No transform */
+}
+
+/* Hide the bottom section (nav/tools) ONLY when minimal class is present */
+.run-mode-overlay.remote-minimal .nav-stack,
+.run-mode-overlay.remote-minimal .tools-stack,
+.run-mode-overlay.remote-minimal .remote-divider {
+    display: none !important;
+}
+
+.run-mode-overlay.timer-active .remote-body {
+    padding-bottom: 12px;
 }
 
 .remote-btn.active {
@@ -1535,7 +1545,27 @@ body {
 
 #runTimeBtn:hover {
     transform: scale(1.1);
-    /* Subtle grow on hover, animation continues */
+}
+
+/* Glow when infinity is active but menu is minimal */
+.run-mode-overlay.infinity-on.remote-minimal #runTimeBtn {
+    box-shadow: 0 0 15px var(--accent-primary);
+    animation: infinityGlow 2s infinite ease-in-out;
+    border: 1px solid rgba(0, 255, 127, 0.3);
+}
+
+@keyframes infinityGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 8px var(--accent-dim);
+        border-color: rgba(0, 255, 127, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 18px var(--accent-primary);
+        border-color: rgba(0, 255, 127, 0.6);
+    }
 }
 
 #runTimeBtn span {
@@ -1544,7 +1574,6 @@ body {
     font-size: 16px;
     z-index: 2;
     position: relative;
-    /* Static icon, no rotation */
 }
 
 @keyframes sphereCounterSpin {
