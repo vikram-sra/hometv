@@ -1,0 +1,336 @@
+{
+  "version": 1,
+  "exportedAt": "2026-03-02T16:22:40.933Z",
+  "favorites": [
+    {
+      "url": "https://86ebec83.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X0Jsb29tYmVyZ1RWUGx1c19ITFM/playlist.m3u8",
+      "addedAt": 1769372555644
+    },
+    {
+      "url": "https://932y483pdjv8-hls-live.5centscdn.com/stream/deb10bae362f810630ec3abedcae5894.sdp/playlist.m3u8",
+      "addedAt": 1769381041202
+    },
+    {
+      "url": "https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8",
+      "addedAt": 1768533920991
+    },
+    {
+      "url": "https://aegis-cloudfront-1.tubi.video/c71ce9b6-cddb-4cec-b0db-2f09289f8782/master.m3u8",
+      "addedAt": 1772467522341
+    },
+    {
+      "url": "https://amagi-streams.akamaized.net/hls/live/2110961/cbctoronto/master.m3u8",
+      "addedAt": 1768533920990
+    },
+    {
+      "url": "https://amagi-streams.akamaized.net/hls/live/2110963/cbccomedy/master.m3u8",
+      "addedAt": 1769355157297
+    },
+    {
+      "url": "https://amg00090-blueantllc-lovenature-au-samsungau-wggcn.amagi.tv/playlist/amg00090-blueantllc-lovenature-au-samsungau/playlist.m3u8",
+      "addedAt": 1769355520639
+    },
+    {
+      "url": "https://amg00106-france24-france24-samsunguk-qvpp8.amagi.tv/playlist/amg00106-france24-france24-samsunguk/playlist.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://amg00217-newsmax-newsmax-zeasn-022k9.amagi.tv/playlist.m3u8",
+      "addedAt": 1772467501557
+    },
+    {
+      "url": "https://amg00405-rakutentv-cgtndocumentary-rakuten-0ql8j.amagi.tv/master.m3u8",
+      "addedAt": 1769372591578
+    },
+    {
+      "url": "https://amg00453-reuters-amg00453c1-rakuten-uk-2110.playouts.now.amagi.tv/playlist/amg00453-reuters-reuters-rakutenuk/playlist.m3u8",
+      "addedAt": 1769461908551
+    },
+    {
+      "url": "https://amg00793-amg00793c5-xumo-us-2664.playouts.now.amagi.tv/bbcstudios-bbctopgear8min-all/playlist.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://amg01269-amg01269c1-firetv-us-5377.playouts.now.amagi.tv/playlist.m3u8",
+      "addedAt": 1769372541494
+    },
+    {
+      "url": "https://bcovlive-a.akamaihd.net/7f5ec16d102f4b5d92e8e27bc95ff424/us-east-1/6240731308001/playlist.m3u8",
+      "addedAt": 1768533920991
+    },
+    {
+      "url": "https://cbcrclinear-tor.akamaized.net/hls/live/2042760/CBCRCLINEAR_TOR_6/master5.m3u8",
+      "addedAt": 1768533920990
+    },
+    {
+      "url": "https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8",
+      "addedAt": 1772467472208
+    },
+    {
+      "url": "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-livenowbyfox-lgus/playlist.m3u8",
+      "addedAt": 1768947111640
+    },
+    {
+      "url": "https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8",
+      "addedAt": 1768533920990
+    },
+    {
+      "url": "https://classicarts.akamaized.net/hls/live/1024257/CAS/master.m3u8",
+      "addedAt": 1769355885891
+    },
+    {
+      "url": "https://content.uplynk.com/channel/ext/72750b711f704e4a94b5cfe6dc99f5e1/wabc_24x7_news.m3u8",
+      "addedAt": 1769461816485
+    },
+    {
+      "url": "https://d1bl6tskrpq9ze.cloudfront.net/hls/master.m3u8?ads.xumo_channelId=99984003",
+      "addedAt": 1772467492957
+    },
+    {
+      "url": "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/bollywood-classic/manifest.m3u8",
+      "addedAt": 1769355924805
+    },
+    {
+      "url": "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/punjabi-hits/index.m3u8",
+      "addedAt": 1769355786226
+    },
+    {
+      "url": "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8",
+      "addedAt": 1769355600094
+    },
+    {
+      "url": "https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/3e22a9c278db4e3eb779afd42e41b0a6/index.m3u8",
+      "addedAt": 1769355618656
+    },
+    {
+      "url": "https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/6e14bac6d0384e129521a4d005188bfb/index.m3u8",
+      "addedAt": 1769355626051
+    },
+    {
+      "url": "https://dash2.antik.sk/live/test_bbc_world/playlist.m3u8",
+      "addedAt": 1768533920991
+    },
+    {
+      "url": "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://edge.fstv-live-linear-channel.top.comcast.net/Content/HLS_HLSv3/Live/channel(b168a609-19c1-2203-ae1d-6b9726f05e67)/index.m3u8",
+      "addedAt": 1769461880818
+    },
+    {
+      "url": "https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8",
+      "addedAt": 1772467575906
+    },
+    {
+      "url": "https://fl1.moveonjoy.com/BET_Jams/index.m3u8",
+      "addedAt": 1769355116496
+    },
+    {
+      "url": "https://fl1.moveonjoy.com/BET_SOUL/index.m3u8",
+      "addedAt": 1769355124646
+    },
+    {
+      "url": "https://fl1.moveonjoy.com/CRAVE_1/index.m3u8",
+      "addedAt": 1769372510028
+    },
+    {
+      "url": "https://fl1.moveonjoy.com/Comedy_Central/index.m3u8",
+      "addedAt": 1769355181398
+    },
+    {
+      "url": "https://fl1.moveonjoy.com/EPIX_2/index.m3u8",
+      "addedAt": 1768923806343
+    },
+    {
+      "url": "https://fl1.moveonjoy.com/ESPN_U/index.m3u8",
+      "addedAt": 1769372521711
+    },
+    {
+      "url": "https://fl31.moveonjoy.com/DISNEY/index.m3u8",
+      "addedAt": 1769372502128
+    },
+    {
+      "url": "https://fox-foxnewsnow-vizio.amagi.tv/playlist.m3u8",
+      "addedAt": 1772428454711
+    },
+    {
+      "url": "https://gsn-cinevault-70s-2-us.roku.wurl.tv/playlist.m3u8",
+      "addedAt": 1768951326729
+    },
+    {
+      "url": "https://hls.navahang.live/hls/stream.m3u8",
+      "addedAt": 1768951110913
+    },
+    {
+      "url": "https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8",
+      "addedAt": 1768533920989
+    },
+    {
+      "url": "https://livehub-voidnet.onrender.com/cluster/streamcore/in/AAJTAK_REDIS.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://livehub-voidnet.onrender.com/cluster/streamcore/us/NBC_REDIS.m3u8",
+      "addedAt": 1769461891467
+    },
+    {
+      "url": "https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/master.m3u8",
+      "addedAt": 1769372534661
+    },
+    {
+      "url": "https://newsxott.in/hls/indianewspunjab.m3u8",
+      "addedAt": 1768533920992
+    },
+    {
+      "url": "https://rt-glb.rttv.com/live/rtnews/playlist.m3u8",
+      "addedAt": 1769461944034
+    },
+    {
+      "url": "https://shls-live-enc.edgenextcdn.net/out/v1/bba3ef00b71b470fa955d93a9ca8c277/index.m3u8",
+      "addedAt": 1769372566344
+    },
+    {
+      "url": "https://streams2.sofast.tv/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/db917aee-4061-4081-b5fc-d5786defb057/manifest.m3u8",
+      "addedAt": 1769355570106
+    },
+    {
+      "url": "https://viamotionhsi.netplus.ch/live/eds/aljazeera/browser-HLS8/aljazeera.m3u8",
+      "addedAt": 1772293934811
+    },
+    {
+      "url": "https://viamotionhsi.netplus.ch/live/eds/comedycentral/browser-HLS8/comedycentral.m3u8",
+      "addedAt": 1769355195170
+    }
+  ],
+  "lists": [
+    {
+      "id": "list_1768838135415",
+      "name": "movies",
+      "channels": [
+        "https://bcovlive-a.akamaihd.net/7f5ec16d102f4b5d92e8e27bc95ff424/us-east-1/6240731308001/playlist.m3u8",
+        "https://fl1.moveonjoy.com/EPIX_2/index.m3u8",
+        "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/bollywood-classic/manifest.m3u8"
+      ],
+      "collapsed": true
+    },
+    {
+      "id": "list_1768945996089",
+      "name": "news",
+      "channels": [
+        "https://dash2.antik.sk/live/test_bbc_world/playlist.m3u8",
+        "https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8",
+        "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8",
+        "https://amg00106-france24-france24-samsunguk-qvpp8.amagi.tv/playlist/amg00106-france24-france24-samsunguk/playlist.m3u8",
+        "https://newsxott.in/hls/indianewspunjab.m3u8",
+        "https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8",
+        "https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8",
+        "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-livenowbyfox-lgus/playlist.m3u8",
+        "https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/master.m3u8",
+        "https://livehub-voidnet.onrender.com/cluster/streamcore/in/AAJTAK_REDIS.m3u8",
+        "https://livehub-voidnet.onrender.com/cluster/streamcore/us/NBC_REDIS.m3u8",
+        "https://amg00453-reuters-amg00453c1-rakuten-uk-2110.playouts.now.amagi.tv/playlist/amg00453-reuters-reuters-rakutenuk/playlist.m3u8",
+        "https://rt-glb.rttv.com/live/rtnews/playlist.m3u8",
+        "https://viamotionhsi.netplus.ch/live/eds/aljazeera/browser-HLS8/aljazeera.m3u8",
+        "https://fox-foxnewsnow-vizio.amagi.tv/playlist.m3u8",
+        "https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8",
+        "https://d1bl6tskrpq9ze.cloudfront.net/hls/master.m3u8?ads.xumo_channelId=99984003",
+        "https://amg00217-newsmax-newsmax-zeasn-022k9.amagi.tv/playlist.m3u8",
+        "https://aegis-cloudfront-1.tubi.video/c71ce9b6-cddb-4cec-b0db-2f09289f8782/master.m3u8",
+        "https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8"
+      ],
+      "collapsed": false
+    }
+  ],
+  "recents": [
+    {
+      "url": "https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8",
+      "name": "ABC News",
+      "timestamp": 1772468128489
+    },
+    {
+      "url": "https://aegis-cloudfront-1.tubi.video/c71ce9b6-cddb-4cec-b0db-2f09289f8782/master.m3u8",
+      "name": "CBC News Network (1080p)",
+      "timestamp": 1772468141705
+    },
+    {
+      "url": "https://amg00106-france24-france24-samsunguk-qvpp8.amagi.tv/playlist/amg00106-france24-france24-samsunguk/playlist.m3u8",
+      "name": "France 24 English (1080p)",
+      "timestamp": 1772468058756
+    },
+    {
+      "url": "https://amg00217-newsmax-newsmax-zeasn-022k9.amagi.tv/playlist.m3u8",
+      "name": "Newsmax 2 (1080p)",
+      "timestamp": 1772468082839
+    },
+    {
+      "url": "https://d1bl6tskrpq9ze.cloudfront.net/hls/master.m3u8?ads.xumo_channelId=99984003",
+      "name": "NBC News NOW (1080p)",
+      "timestamp": 1772468068689
+    },
+    {
+      "url": "https://dash2.antik.sk/live/test_bbc_world/playlist.m3u8",
+      "name": "BBC News Europe",
+      "timestamp": 1772468134455
+    },
+    {
+      "url": "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8",
+      "name": "DW English (1080p)",
+      "timestamp": 1772468049156
+    },
+    {
+      "url": "https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8",
+      "name": "Aaj Tak HD (1080p)",
+      "timestamp": 1772468125822
+    },
+    {
+      "url": "https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8",
+      "name": "Al Jazeera English (1080p)",
+      "timestamp": 1772468129639
+    },
+    {
+      "url": "https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/master.m3u8",
+      "name": "NDTV 24X7 (480p) [Not 24/7]",
+      "timestamp": 1772468073572
+    }
+  ],
+  "preferences": [
+    {
+      "key": "_migrated",
+      "value": true,
+      "migratedAt": 1769380667040
+    },
+    {
+      "key": "dock_left",
+      "value": 15
+    },
+    {
+      "key": "dock_top",
+      "value": 144.5
+    },
+    {
+      "key": "last_channel",
+      "value": "https://aegis-cloudfront-1.tubi.video/c71ce9b6-cddb-4cec-b0db-2f09289f8782/master.m3u8"
+    },
+    {
+      "key": "playlist_url",
+      "value": "https://iptv-org.github.io/iptv/index.m3u"
+    },
+    {
+      "key": "sidebar_collapsed",
+      "value": false
+    },
+    {
+      "key": "tv_theme",
+      "value": "amber"
+    },
+    {
+      "key": "tv_volume",
+      "value": 1
+    },
+    {
+      "key": "view_mode",
+      "value": "list"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ class TVApp {
             channels: [],
             filteredChannels: [],
             categories: {},
+            languages: {},
             favorites: new Set(),
             favoriteLists: {},
             favListsCollapsed: {},
@@ -58,7 +59,6 @@ class TVApp {
             collapseBtn: document.getElementById('collapseBtn'),
             updateNotification: document.getElementById('updateNotification'),
             toast: document.getElementById('toast'),
-            sortSelect: document.getElementById('sortSelect'),
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
             sidebarBackdrop: document.getElementById('sidebarBackdrop'),
 
@@ -238,8 +238,9 @@ class TVApp {
             this.state.favoriteLists = await this.db.getLists();
 
             for (const id of Object.keys(this.state.favoriteLists)) {
-                this.state.favListsCollapsed[id] = this.state.favoriteLists[id].collapsed || false;
+                this.state.favListsCollapsed[id] = true;
             }
+            this.state.favListsCollapsed['all'] = false;
 
             const recents = await this.db.getRecents();
             this.state.recents = recents.map(r => ({ name: r.name, url: r.url }));
@@ -377,7 +378,6 @@ class TVApp {
         };
 
         this.ui.categorySelect.onchange = () => this.applyFilters();
-        this.ui.sortSelect.onchange = () => this.applyFilters(); // New listener
 
         this.ui.channelList.onscroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = this.ui.channelList;
@@ -1231,6 +1231,7 @@ class TVApp {
     parsePlaylist(content) {
         this.state.channels = [];
         this.state.categories = {};
+        this.state.languages = {};
 
         const lines = content.split('\n');
         let current = {};
@@ -1245,22 +1246,51 @@ class TVApp {
                 const name = info.slice(lastComma + 1).trim();
 
                 const getAttr = key => {
-                    const m = meta.match(new RegExp(`${key}="([^"]*)"`, 'i'));
-                    return m ? m[1] : '';
+                    const m = meta.match(new RegExp(`${key}="([^"]*)"`, 'i')) || meta.match(new RegExp(`${key}=([^\\s,>]*)`, 'i'));
+                    return m ? m[1].trim() : '';
                 };
 
                 const category = getAttr('group-title').split(';')[0].trim() || 'Other';
+                let language = getAttr('tvg-language') || getAttr('tvg-lang') || getAttr('lang') || getAttr('language');
+
+                if (!language) {
+                    const langMatch = name.match(/\[([A-Z]{2,3})\]/i) || name.match(/\(([A-Z]{2,3})\)/i);
+                    language = langMatch ? langMatch[1].toUpperCase() : 'Other';
+                }
+
+                const langMap = {
+                    'eng': 'English', 'hin': 'Hindi', 'spa': 'Spanish', 'fra': 'French',
+                    'ara': 'Arabic', 'rus': 'Russian', 'por': 'Portuguese', 'ita': 'Italian',
+                    'deu': 'German', 'tur': 'Turkish', 'zho': 'Chinese', 'jpn': 'Japanese',
+                    'pan': 'Punjabi', 'ben': 'Bengali', 'tel': 'Telugu', 'mar': 'Marathi',
+                    'tam': 'Tamil', 'urd': 'Urdu', 'guj': 'Gujarati', 'kan': 'Kannada',
+                    'mal': 'Malayalam', 'kor': 'Korean', 'vie': 'Vietnamese', 'tha': 'Thai',
+                    'fas': 'Persian', 'pol': 'Polish', 'ukr': 'Ukrainian', 'ces': 'Czech',
+                    'ron': 'Romanian', 'ell': 'Greek', 'heb': 'Hebrew', 'ind': 'Indonesian'
+                };
+
+                language = language.split(',')[0].trim().toLowerCase();
+                if (langMap[language]) language = langMap[language];
+                else if (language.length === 3 && langMap[language.substring(0, 3)]) language = langMap[language.substring(0, 3)];
+                else language = language.charAt(0).toUpperCase() + language.slice(1);
+
                 current = {
                     name,
                     category,
+                    language,
                     logo: getAttr('tvg-logo'),
                     url: ''
                 };
             } else if (line.startsWith('http')) {
                 current.url = line;
                 this.state.channels.push(current);
+
                 if (!this.state.categories[current.category]) this.state.categories[current.category] = 0;
                 this.state.categories[current.category]++;
+
+                if (!this.state.languages[current.language]) this.state.languages[current.language] = 0;
+                this.state.languages[current.language]++;
+
                 current = {};
             }
         }
@@ -1269,12 +1299,12 @@ class TVApp {
     populateCategoryDropdown() {
         const cats = Object.keys(this.state.categories).sort();
         this.ui.categorySelect.innerHTML = '<option value="">ALL</option>' +
-            cats.map(c => `<option value="${c}">${c} (${this.state.categories[c]})</option>`).join('');
+            cats.map(c => `<option value="${c}">${c.toUpperCase()} (${this.state.categories[c]})</option>`).join('');
     }
 
     applyFilters() {
         const search = this.ui.searchInput.value.toLowerCase();
-        const category = this.ui.categorySelect.value;
+        const category = this.ui.activeTab === 'favorites' ? '' : this.ui.categorySelect.value;
         const tab = this.state.activeTab;
 
         // Reset sub-scope when tab/filter changes, unless we are in favorites 
@@ -1307,19 +1337,9 @@ class TVApp {
             });
         }
 
-        // Sorting Logic
-        if (this.state.activeTab === 'all') {
-            const sort = this.ui.sortSelect.value;
-            if (sort === 'alpha') {
-                this.state.filteredChannels.sort((a, b) => a.name.localeCompare(b.name));
-            } else if (sort === 'fav') {
-                this.state.filteredChannels.sort((a, b) => {
-                    const aFav = this.state.favorites.has(a.url) ? 1 : 0;
-                    const bFav = this.state.favorites.has(b.url) ? 1 : 0;
-                    if (aFav !== bFav) return bFav - aFav; // Favorites first
-                    return a.name.localeCompare(b.name); // Then alphabetical
-                });
-            }
+        // Default alphabetical sort for everything else
+        if (this.state.activeTab !== 'recents') {
+            this.state.filteredChannels.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         this.state.renderIndex = 0;
@@ -1378,7 +1398,11 @@ class TVApp {
     }
 
     renderFavSection(container, listId, name, channels, isDeletable) {
-        const isCollapsed = this.state.favListsCollapsed[listId] || false;
+        // Default: only 'all' (All Starred) is expanded, others collapsed
+        let isCollapsed = this.state.favListsCollapsed[listId];
+        if (isCollapsed === undefined) {
+            isCollapsed = (listId !== 'all');
+        }
 
         const header = document.createElement('div');
         header.className = 'fav-section-header';
@@ -1504,7 +1528,7 @@ class TVApp {
             this.db.saveList(id, {
                 name: list.name,
                 channels: list.channels,
-                collapsed: this.state.favListsCollapsed[id] || false
+                collapsed: this.state.favListsCollapsed[id] !== undefined ? this.state.favListsCollapsed[id] : true
             });
         }
     }
@@ -1512,7 +1536,7 @@ class TVApp {
     createFavoriteList(name) {
         const id = 'list_' + Date.now();
         this.state.favoriteLists[id] = { name, channels: [] };
-        this.state.favListsCollapsed[id] = false;
+        this.state.favListsCollapsed[id] = true;
         this.saveFavoriteLists();
         return id;
     }

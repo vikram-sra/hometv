@@ -100,7 +100,7 @@ class TVDatabase {
                     id,
                     name: list.name,
                     channels: list.channels,
-                    collapsed: favListsCollapsed[id] || false,
+                    collapsed: favListsCollapsed[id] !== undefined ? favListsCollapsed[id] : true,
                     createdAt: Date.now()
                 });
             }
@@ -282,7 +282,7 @@ class TVDatabase {
             result[list.id] = {
                 name: list.name,
                 channels: list.channels || [],
-                collapsed: list.collapsed || false
+                collapsed: list.collapsed !== undefined ? list.collapsed : true
             };
         }
         return result;
