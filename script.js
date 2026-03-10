@@ -235,6 +235,26 @@ class TVApp {
     async loadStateFromDB() {
         try {
             this.state.favorites = await this.db.getFavorites();
+
+            // Check if favorites are empty and load defaults
+            if (this.state.favorites.size === 0) {
+                try {
+                    const res = await fetch('./fav/Fav0.json');
+                    if (res.ok) {
+                        const defaultFavs = await res.json();
+                        if (defaultFavs && defaultFavs.favorites) {
+                            for (const fav of defaultFavs.favorites) {
+                                await this.db.put('favorites', fav);
+                            }
+                            // Re-fetch favorites after inserting
+                            this.state.favorites = await this.db.getFavorites();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[App] Failed to load default Fav0.json', e);
+                }
+            }
+
             this.state.favoriteLists = await this.db.getLists();
 
             for (const id of Object.keys(this.state.favoriteLists)) {
@@ -312,6 +332,7 @@ class TVApp {
                         if (worker.state === 'installed' && navigator.serviceWorker.controller) {
                             // Auto-apply update
                             console.log('[App] New update installed, refreshing...');
+                            this.showToast('New version detected. Reloading...', 5000);
                             worker.postMessage('skipWaiting');
                         }
                     };
@@ -323,7 +344,9 @@ class TVApp {
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (refreshing) return;
                 refreshing = true;
-                window.location.reload();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500); // Give user a moment to see the toast
             });
         }
     }

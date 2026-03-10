@@ -1,5 +1,5 @@
-// HOME TV Service Worker v3.0
-const CACHE_NAME = 'hometv-v3.1';
+// HOME TV Service Worker v3.2
+const CACHE_NAME = 'hometv-v3.2';
 const STATIC_ASSETS = [
     './',
     './index.html',
