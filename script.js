@@ -139,7 +139,7 @@ class TVApp {
             }
         }
 
-        this.registerServiceWorker();
+        this.unregisterServiceWorker();
         this.startLiveTimeUpdater();
         this.updateTimerUI();
         this.initializeInfinitySphere();
@@ -323,30 +323,12 @@ class TVApp {
         setTimeout(() => toast.classList.add('hidden'), duration);
     }
 
-    registerServiceWorker() {
+    unregisterServiceWorker() {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').then(reg => {
-                reg.onupdatefound = () => {
-                    const worker = reg.installing;
-                    worker.onstatechange = () => {
-                        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // Auto-apply update
-                            console.log('[App] New update installed, refreshing...');
-                            this.showToast('New version detected. Reloading...', 5000);
-                            worker.postMessage('skipWaiting');
-                        }
-                    };
-                };
-            }).catch(() => { });
-
-            // Ensure we only reload once
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                refreshing = true;
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500); // Give user a moment to see the toast
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.unregister();
+                }
             });
         }
     }

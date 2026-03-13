@@ -1,0 +1,27 @@
+{
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0-rc.18"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.1"
+  },
+  "name": "tv",
+  "version": "1.0.0",
+  "description": "A retro-styled, modern IPTV streaming terminal for watching free live TV channels.",
+  "main": "db.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikram-sra/hometv.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vikram-sra/hometv/issues"
+  },
+  "homepage": "https://github.com/vikram-sra/hometv#readme"
+}

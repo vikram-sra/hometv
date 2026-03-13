@@ -29,10 +29,35 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
     <!-- Local Assets -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
-<body>
+<body style="background: transparent;">
+
+    <!-- Native Mac Titlebar -->
+    <div class="custom-titlebar" id="customTitlebar" data-tauri-drag-region>
+        <span class="custom-titlebar-title">HOME TV</span>
+    </div>
+
+    <!-- Tauri v2 Drag Fallback -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const titlebar = document.getElementById('customTitlebar');
+            if (titlebar) {
+                titlebar.addEventListener('mousedown', (e) => {
+                    if (e.button === 0 && window.__TAURI__) {
+                        try {
+                            if (window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow) {
+                                window.__TAURI__.window.getCurrentWindow().startDragging();
+                            } else {
+                                window.__TAURI__.core.invoke('plugin:window|start_dragging').catch(() => {});
+                            }
+                        } catch (err) {}
+                    }
+                });
+            }
+        });
+    </script>
 
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden"></div>

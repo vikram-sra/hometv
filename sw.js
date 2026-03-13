@@ -1,5 +1,5 @@
-// HOME TV Service Worker v3.2
-const CACHE_NAME = 'hometv-v3.2';
+// HOME TV Service Worker v3.4
+const CACHE_NAME = 'hometv-v3.4';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -19,13 +19,13 @@ const CDN_ASSETS = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
     console.log('[SW] Installing...');
+    self.skipWaiting(); // FORCE ACTIVATION IMMEDIATELY
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('[SW] Caching static assets');
                 return cache.addAll(STATIC_ASSETS);
             })
-            .then(() => self.skipWaiting())
     );
 });
 

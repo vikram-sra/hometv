@@ -1,10 +1,10 @@
 /* ===== PREMIUM TERMINAL TV THEME ===== */
 :root {
     /* Core Colors - Enhanced Depth */
-    --bg-base: #0a0a0f;
-    --bg-elevated: #0f0f15;
-    --bg-surface: #161620;
-    --bg-sidebar: linear-gradient(180deg, #0a0c10 0%, #080a0e 100%);
+    --bg-base: rgba(10, 10, 15, 0.0);
+    --bg-elevated: rgba(15, 15, 21, 0.4);
+    --bg-surface: rgba(22, 22, 32, 0.4);
+    --bg-sidebar: linear-gradient(180deg, rgba(10, 12, 16, 0.35) 0%, rgba(8, 10, 14, 0.55) 100%);
 
     /* Accent - Cyber Green */
     --accent-primary: #00ff7f;
@@ -51,19 +51,56 @@
     box-sizing: border-box;
 }
 
+/* Tauri Drag Region Configuration */
+[data-tauri-drag-region] {
+    -webkit-app-region: drag;
+    user-select: none;
+}
+
+button, input, select, a, .channel-item, .remote-btn, .mini-btn, .vol-segmented-track, .seek-bar-container, .tool-btn {
+    -webkit-app-region: no-drag;
+}
+
+/* Custom Titlebar for Mac */
+.custom-titlebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: linear-gradient(180deg, rgba(20, 20, 25, 0.6) 0%, rgba(10, 10, 15, 0.2) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+.custom-titlebar-title {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    pointer-events: none; /* Let drag pass through text */
+}
+
 /* ===== BODY ===== */
 body {
     width: 100vw;
     height: 100dvh;
     font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
-    background: transparent;
+    background: rgba(10, 10, 15, 0.45);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
     display: flex;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Safe area support for notched devices */
-    padding-top: env(safe-area-inset-top, 0);
+    /* Safe area and titlebar support */
+    padding-top: calc(env(safe-area-inset-top, 0) + 32px);
     padding-bottom: env(safe-area-inset-bottom, 0);
     padding-left: env(safe-area-inset-left, 0);
     padding-right: env(safe-area-inset-right, 0);
